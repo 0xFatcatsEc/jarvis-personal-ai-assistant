@@ -1,0 +1,82 @@
+{
+  "backlog": "1.1.2.1",
+  "asset_root": "%LOCALAPPDATA%/StylusJarvis/assets/m0-v1",
+  "ollama_version": "0.40.17",
+  "qwen_model": "qwen3:4b",
+  "whisper_model": "multilingual base (whisper.cpp GGML)",
+  "piper_voice": {
+    "id": "en_US-ljspeech-medium",
+    "license_evidence": "piper/MODEL_CARD",
+    "dataset": "LJ Speech",
+    "dataset_license": "public domain",
+    "training": "Trained from scratch. The pinned card identifies the dataset license and gives no separate weights license."
+  },
+  "assets": [
+    {
+      "path": "installers/OllamaSetup-0.40.17.exe",
+      "size": 1857946272,
+      "sha256": "2eeb9ff7ef83902b5d48562dbaf0af5489829c3d52435fb8067ddad23cb33c65",
+      "url": "https://github.com/ollama/ollama/releases/download/v0.40.17/OllamaSetup.exe"
+    },
+    {
+      "path": "ollama/models/manifests/registry.ollama.ai/library/qwen3/4b",
+      "size": 859,
+      "sha256": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+      "url": "https://registry.ollama.ai/v2/library/qwen3/manifests/4b"
+    },
+    {
+      "path": "ollama/models/blobs/sha256-e18a783aae5525fd2852fc94c985541a77e791e034abc2d3056474d59de336fc",
+      "size": 487,
+      "sha256": "e18a783aae5525fd2852fc94c985541a77e791e034abc2d3056474d59de336fc",
+      "url": "https://registry.ollama.ai/v2/library/qwen3/blobs/sha256:e18a783aae5525fd2852fc94c985541a77e791e034abc2d3056474d59de336fc"
+    },
+    {
+      "path": "ollama/models/blobs/sha256-3e4cb14174460404e7a233e531675303b2fbf7749c02f91864fe311ab6344e4f",
+      "size": 2497280480,
+      "sha256": "3e4cb14174460404e7a233e531675303b2fbf7749c02f91864fe311ab6344e4f",
+      "url": "https://registry.ollama.ai/v2/library/qwen3/blobs/sha256:3e4cb14174460404e7a233e531675303b2fbf7749c02f91864fe311ab6344e4f"
+    },
+    {
+      "path": "ollama/models/blobs/sha256-2d54db2b9bb29ce7db54fea63a891f5859603813c555b1f88b5e0994652897f9",
+      "size": 1506,
+      "sha256": "2d54db2b9bb29ce7db54fea63a891f5859603813c555b1f88b5e0994652897f9",
+      "url": "https://registry.ollama.ai/v2/library/qwen3/blobs/sha256:2d54db2b9bb29ce7db54fea63a891f5859603813c555b1f88b5e0994652897f9"
+    },
+    {
+      "path": "ollama/models/blobs/sha256-d18a5cc71b84bc4af394a31116bd3932b42241de70c77d2b76d69a314ec8aa12",
+      "size": 11338,
+      "sha256": "d18a5cc71b84bc4af394a31116bd3932b42241de70c77d2b76d69a314ec8aa12",
+      "url": "https://registry.ollama.ai/v2/library/qwen3/blobs/sha256:d18a5cc71b84bc4af394a31116bd3932b42241de70c77d2b76d69a314ec8aa12"
+    },
+    {
+      "path": "ollama/models/blobs/sha256-cff3f395ef3756ab63e58b0ad1b32bb6f802905cae1472e6a12034e4246fbbdb",
+      "size": 120,
+      "sha256": "cff3f395ef3756ab63e58b0ad1b32bb6f802905cae1472e6a12034e4246fbbdb",
+      "url": "https://registry.ollama.ai/v2/library/qwen3/blobs/sha256:cff3f395ef3756ab63e58b0ad1b32bb6f802905cae1472e6a12034e4246fbbdb"
+    },
+    {
+      "path": "whisper/ggml-base.bin",
+      "size": 147951465,
+      "sha256": "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-base.bin"
+    },
+    {
+      "path": "piper/en_US-ljspeech-medium.onnx",
+      "size": 63531379,
+      "sha256": "6f52a751e2349abe7a76735eb09dc1875298c77ea2342ffd2fef79ff81b87f22",
+      "url": "https://huggingface.co/rhasspy/piper-voices/resolve/e9c8a39444359388adaa94255becb37a5a2b8e51/en/en_US/ljspeech/medium/en_US-ljspeech-medium.onnx"
+    },
+    {
+      "path": "piper/en_US-ljspeech-medium.onnx.json",
+      "size": 4972,
+      "sha256": "141d612cc0a95ed7efc1ca936b845c2364967f2e9217c5dbfcf69fc4d6c65860",
+      "url": "https://huggingface.co/rhasspy/piper-voices/resolve/e9c8a39444359388adaa94255becb37a5a2b8e51/en/en_US/ljspeech/medium/en_US-ljspeech-medium.onnx.json"
+    },
+    {
+      "path": "piper/MODEL_CARD",
+      "size": 517,
+      "sha256": "fbee1529c89d36b3fe76d7e9f3f832dce17f44900a52d76a9bda735654766b4d",
+      "url": "https://huggingface.co/rhasspy/piper-voices/resolve/e9c8a39444359388adaa94255becb37a5a2b8e51/en/en_US/ljspeech/medium/MODEL_CARD"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "revision": "coding-v1",
+  "cases": [
+    {
+      "id": "C01",
+      "prompt": "Python 3.12. Explain why accumulating prices with sum(items) / len(items) fails for an empty list. Provide a typed average function returning None for empty input and a float otherwise.",
+      "rubric": [
+        "Explains division by zero and explicitly handles the empty case.",
+        "Typed implementation returns the arithmetic mean, including for zero and negative prices."
+      ]
+    },
+    {
+      "id": "C02",
+      "prompt": "Write a Python function first_unique(names) that returns names once, preserving first appearance and treating case as significant. Explain complexity.",
+      "rubric": [
+        "Produces correct stable first-occurrence order including empty and repeated input.",
+        "Uses a set or ordered dict with expected linear time and explains auxiliary space."
+      ]
+    },
+    {
+      "id": "C03",
+      "prompt": "A SQLite course app stores messages(project_id, seq, body). Write a parameterized Python sqlite3 query that returns the next page of bodies and sequence numbers after a cursor within one project. State the ordering assumption.",
+      "rubric": [
+        "Project and exclusive sequence cursor are bound parameters and rows cannot cross projects.",
+        "Orders by ascending seq, bounds page length, and states that seq is unique within a project."
+      ]
+    },
+    {
+      "id": "C04",
+      "prompt": "Review this Python function: def add_label(label, labels=[]): labels.append(label); return labels. Explain two consecutive one-argument calls and fix it while preserving explicit empty lists passed by callers.",
+      "rubric": [
+        "Identifies shared default mutation across calls.",
+        "Uses a None sentinel and preserves the supplied list identity, including when empty."
+      ]
+    },
+    {
+      "id": "C05",
+      "prompt": "Write an async Python 3.12 helper taking an async context manager for a resource and a coroutine function that consumes the resource. Return the consumer result and explain cancellation cleanup.",
+      "rubric": [
+        "Awaits the consumer inside async with and returns the actual result.",
+        "Explains context exit on cancellation and does not swallow cancellation or close the resource twice."
+      ]
+    }
+  ]
+}

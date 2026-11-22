@@ -1,0 +1,30 @@
+[
+  {
+    "project": "atlas",
+    "file": "handbook.pdf",
+    "page": 1,
+    "heading": "Architecture",
+    "text": "Atlas stores checkouts in SQLite. Each loan lasts 14 days. The checkout desk closes at 17:30. The nightly export is CSV."
+  },
+  {
+    "project": "atlas",
+    "file": "handbook.pdf",
+    "page": 2,
+    "heading": "Pilot operations",
+    "text": "Atlas pilot room is B204. Its owner is the library desk. The pilot starts on 12 January 2027. Offline checkouts use a local queue. Only Atlas uses badge prefix AT."
+  },
+  {
+    "project": "birch",
+    "file": "handbook.pdf",
+    "page": 1,
+    "heading": "Architecture",
+    "text": "Birch stores checkouts in PostgreSQL. Each loan lasts 7 days. The checkout desk closes at 19:00. The nightly export is JSON."
+  },
+  {
+    "project": "birch",
+    "file": "handbook.pdf",
+    "page": 2,
+    "heading": "Pilot operations",
+    "text": "Birch pilot room is C108. Its owner is the campus lab. The pilot starts on 19 January 2027. Offline checkouts are disabled. Only Birch uses the violet cabinet."
+  }
+]

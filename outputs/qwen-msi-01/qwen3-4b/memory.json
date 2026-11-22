@@ -1,0 +1,2682 @@
+[
+  {
+    "monotonic_s": 190452.437,
+    "ram_mib": 6746,
+    "vram_mib": 98
+  },
+  {
+    "monotonic_s": 190453.031,
+    "ram_mib": 6748,
+    "vram_mib": 98
+  },
+  {
+    "monotonic_s": 190453.64,
+    "ram_mib": 6734,
+    "vram_mib": 98
+  },
+  {
+    "monotonic_s": 190454.343,
+    "ram_mib": 6755,
+    "vram_mib": 98
+  },
+  {
+    "monotonic_s": 190454.968,
+    "ram_mib": 6589,
+    "vram_mib": 98
+  },
+  {
+    "monotonic_s": 190455.562,
+    "ram_mib": 6569,
+    "vram_mib": 98
+  },
+  {
+    "monotonic_s": 190456.156,
+    "ram_mib": 6614,
+    "vram_mib": 160
+  },
+  {
+    "monotonic_s": 190456.765,
+    "ram_mib": 6674,
+    "vram_mib": 160
+  },
+  {
+    "monotonic_s": 190457.375,
+    "ram_mib": 6413,
+    "vram_mib": 160
+  },
+  {
+    "monotonic_s": 190458.468,
+    "ram_mib": 7115,
+    "vram_mib": 1906
+  },
+  {
+    "monotonic_s": 190459.125,
+    "ram_mib": 7026,
+    "vram_mib": 1906
+  },
+  {
+    "monotonic_s": 190459.781,
+    "ram_mib": 7042,
+    "vram_mib": 1906
+  },
+  {
+    "monotonic_s": 190460.562,
+    "ram_mib": 7008,
+    "vram_mib": 1906
+  },
+  {
+    "monotonic_s": 190461.234,
+    "ram_mib": 7003,
+    "vram_mib": 1906
+  },
+  {
+    "monotonic_s": 190462.437,
+    "ram_mib": 7066,
+    "vram_mib": 1906
+  },
+  {
+    "monotonic_s": 190463.156,
+    "ram_mib": 7044,
+    "vram_mib": 1906
+  },
+  {
+    "monotonic_s": 190463.921,
+    "ram_mib": 7040,
+    "vram_mib": 1906
+  },
+  {
+    "monotonic_s": 190464.578,
+    "ram_mib": 7147,
+    "vram_mib": 2398
+  },
+  {
+    "monotonic_s": 190465.203,
+    "ram_mib": 7018,
+    "vram_mib": 2398
+  },
+  {
+    "monotonic_s": 190465.828,
+    "ram_mib": 6817,
+    "vram_mib": 2398
+  },
+  {
+    "monotonic_s": 190466.421,
+    "ram_mib": 6962,
+    "vram_mib": 2398
+  },
+  {
+    "monotonic_s": 190467.031,
+    "ram_mib": 6888,
+    "vram_mib": 2400
+  },
+  {
+    "monotonic_s": 190467.625,
+    "ram_mib": 6971,
+    "vram_mib": 2400
+  },
+  {
+    "monotonic_s": 190468.265,
+    "ram_mib": 7032,
+    "vram_mib": 2400
+  },
+  {
+    "monotonic_s": 190468.906,
+    "ram_mib": 6992,
+    "vram_mib": 2400
+  },
+  {
+    "monotonic_s": 190469.562,
+    "ram_mib": 7078,
+    "vram_mib": 2400
+  },
+  {
+    "monotonic_s": 190470.171,
+    "ram_mib": 6907,
+    "vram_mib": 2400
+  },
+  {
+    "monotonic_s": 190470.765,
+    "ram_mib": 6366,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190471.359,
+    "ram_mib": 6588,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190471.968,
+    "ram_mib": 6794,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190472.593,
+    "ram_mib": 6963,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190473.187,
+    "ram_mib": 6863,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190473.781,
+    "ram_mib": 6818,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190474.39,
+    "ram_mib": 6698,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190475.015,
+    "ram_mib": 6589,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190475.609,
+    "ram_mib": 6481,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190476.203,
+    "ram_mib": 6473,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190476.781,
+    "ram_mib": 6468,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190477.39,
+    "ram_mib": 6523,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190477.968,
+    "ram_mib": 6549,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190478.546,
+    "ram_mib": 6589,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190479.125,
+    "ram_mib": 6618,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190479.718,
+    "ram_mib": 6645,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190480.296,
+    "ram_mib": 6673,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190480.89,
+    "ram_mib": 6724,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190481.5,
+    "ram_mib": 6756,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190482.093,
+    "ram_mib": 6617,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190482.687,
+    "ram_mib": 6637,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190483.296,
+    "ram_mib": 6789,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190483.906,
+    "ram_mib": 6762,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190484.593,
+    "ram_mib": 6785,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190485.25,
+    "ram_mib": 6748,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190485.859,
+    "ram_mib": 6830,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190486.484,
+    "ram_mib": 6900,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190487.109,
+    "ram_mib": 6759,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190487.703,
+    "ram_mib": 6739,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190488.312,
+    "ram_mib": 6744,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190488.968,
+    "ram_mib": 7045,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190489.578,
+    "ram_mib": 7070,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190490.187,
+    "ram_mib": 6933,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190490.781,
+    "ram_mib": 6810,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190491.39,
+    "ram_mib": 6640,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190491.968,
+    "ram_mib": 6488,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190492.546,
+    "ram_mib": 6524,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190493.14,
+    "ram_mib": 6587,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190493.734,
+    "ram_mib": 6563,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190494.328,
+    "ram_mib": 6610,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190494.921,
+    "ram_mib": 6636,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190495.5,
+    "ram_mib": 6662,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190496.093,
+    "ram_mib": 6674,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190496.687,
+    "ram_mib": 6676,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190497.265,
+    "ram_mib": 6700,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190497.843,
+    "ram_mib": 6747,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190498.453,
+    "ram_mib": 6706,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190499.062,
+    "ram_mib": 6729,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190499.656,
+    "ram_mib": 6787,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190500.265,
+    "ram_mib": 6733,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190500.859,
+    "ram_mib": 6562,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190501.437,
+    "ram_mib": 6672,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190502.046,
+    "ram_mib": 6786,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190502.656,
+    "ram_mib": 6860,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190503.25,
+    "ram_mib": 6689,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190503.828,
+    "ram_mib": 6659,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190504.437,
+    "ram_mib": 6761,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190505.062,
+    "ram_mib": 6663,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190505.656,
+    "ram_mib": 6682,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190506.296,
+    "ram_mib": 6973,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190507.093,
+    "ram_mib": 7109,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190507.734,
+    "ram_mib": 7006,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190508.328,
+    "ram_mib": 6951,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190508.937,
+    "ram_mib": 6734,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190509.531,
+    "ram_mib": 6610,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190510.125,
+    "ram_mib": 6614,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190510.734,
+    "ram_mib": 6672,
+    "vram_mib": 2408
+  },
+  {
+    "monotonic_s": 190511.359,
+    "ram_mib": 6890,
+    "vram_mib": 2412
+  },
+  {
+    "monotonic_s": 190511.953,
+    "ram_mib": 6964,
+    "vram_mib": 2412
+  },
+  {
+    "monotonic_s": 190512.546,
+    "ram_mib": 6964,
+    "vram_mib": 2412
+  },
+  {
+    "monotonic_s": 190513.171,
+    "ram_mib": 6933,
+    "vram_mib": 2412
+  },
+  {
+    "monotonic_s": 190513.796,
+    "ram_mib": 6757,
+    "vram_mib": 2412
+  },
+  {
+    "monotonic_s": 190514.406,
+    "ram_mib": 6620,
+    "vram_mib": 2412
+  },
+  {
+    "monotonic_s": 190515.031,
+    "ram_mib": 6667,
+    "vram_mib": 2412
+  },
+  {
+    "monotonic_s": 190515.625,
+    "ram_mib": 6784,
+    "vram_mib": 2412
+  },
+  {
+    "monotonic_s": 190516.234,
+    "ram_mib": 6586,
+    "vram_mib": 2412
+  },
+  {
+    "monotonic_s": 190516.812,
+    "ram_mib": 6609,
+    "vram_mib": 2412
+  },
+  {
+    "monotonic_s": 190517.5,
+    "ram_mib": 6722,
+    "vram_mib": 2469
+  },
+  {
+    "monotonic_s": 190518.14,
+    "ram_mib": 6920,
+    "vram_mib": 2480
+  },
+  {
+    "monotonic_s": 190518.796,
+    "ram_mib": 6887,
+    "vram_mib": 2480
+  },
+  {
+    "monotonic_s": 190519.406,
+    "ram_mib": 6832,
+    "vram_mib": 2480
+  },
+  {
+    "monotonic_s": 190520.031,
+    "ram_mib": 6701,
+    "vram_mib": 2480
+  },
+  {
+    "monotonic_s": 190520.64,
+    "ram_mib": 6659,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190521.234,
+    "ram_mib": 6661,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190521.859,
+    "ram_mib": 6633,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190522.468,
+    "ram_mib": 6660,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190523.078,
+    "ram_mib": 6653,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190523.718,
+    "ram_mib": 6673,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190524.296,
+    "ram_mib": 6650,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190524.89,
+    "ram_mib": 6664,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190525.5,
+    "ram_mib": 6707,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190526.125,
+    "ram_mib": 6947,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190526.75,
+    "ram_mib": 6990,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190527.421,
+    "ram_mib": 6871,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190528.015,
+    "ram_mib": 6734,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190528.609,
+    "ram_mib": 6647,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190529.203,
+    "ram_mib": 6549,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190529.796,
+    "ram_mib": 6631,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190530.39,
+    "ram_mib": 6690,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190530.984,
+    "ram_mib": 6635,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190531.578,
+    "ram_mib": 6623,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190532.171,
+    "ram_mib": 6611,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190532.765,
+    "ram_mib": 6622,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190533.375,
+    "ram_mib": 6638,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190533.968,
+    "ram_mib": 6622,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190534.562,
+    "ram_mib": 6648,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190535.156,
+    "ram_mib": 6643,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190535.734,
+    "ram_mib": 6653,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190536.328,
+    "ram_mib": 6582,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190536.921,
+    "ram_mib": 6670,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190537.562,
+    "ram_mib": 6740,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190538.156,
+    "ram_mib": 6852,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190538.828,
+    "ram_mib": 6866,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190539.437,
+    "ram_mib": 6894,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190540.031,
+    "ram_mib": 6695,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190540.625,
+    "ram_mib": 6561,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190541.203,
+    "ram_mib": 6514,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190541.812,
+    "ram_mib": 6630,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190542.39,
+    "ram_mib": 6686,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190543.0,
+    "ram_mib": 6672,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190543.64,
+    "ram_mib": 6675,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190544.218,
+    "ram_mib": 6723,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190544.828,
+    "ram_mib": 6699,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190545.453,
+    "ram_mib": 6674,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190546.046,
+    "ram_mib": 6714,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190546.671,
+    "ram_mib": 6834,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190547.281,
+    "ram_mib": 6902,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190547.89,
+    "ram_mib": 6831,
+    "vram_mib": 2472
+  },
+  {
+    "monotonic_s": 190548.515,
+    "ram_mib": 6829,
+    "vram_mib": 2439
+  },
+  {
+    "monotonic_s": 190549.125,
+    "ram_mib": 6805,
+    "vram_mib": 2439
+  },
+  {
+    "monotonic_s": 190549.75,
+    "ram_mib": 6827,
+    "vram_mib": 2439
+  },
+  {
+    "monotonic_s": 190550.5,
+    "ram_mib": 6994,
+    "vram_mib": 2439
+  },
+  {
+    "monotonic_s": 190551.125,
+    "ram_mib": 6962,
+    "vram_mib": 2439
+  },
+  {
+    "monotonic_s": 190551.796,
+    "ram_mib": 7026,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190552.406,
+    "ram_mib": 7074,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190553.031,
+    "ram_mib": 7034,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190553.625,
+    "ram_mib": 6881,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190554.218,
+    "ram_mib": 6815,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190554.953,
+    "ram_mib": 7061,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190555.64,
+    "ram_mib": 7214,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190556.25,
+    "ram_mib": 7103,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190556.859,
+    "ram_mib": 6941,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190557.453,
+    "ram_mib": 6944,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190558.031,
+    "ram_mib": 6936,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190558.828,
+    "ram_mib": 6952,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190559.531,
+    "ram_mib": 7012,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190560.187,
+    "ram_mib": 6937,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190560.859,
+    "ram_mib": 6871,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190561.531,
+    "ram_mib": 6903,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190562.218,
+    "ram_mib": 6898,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190562.89,
+    "ram_mib": 6876,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190563.562,
+    "ram_mib": 6933,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190564.343,
+    "ram_mib": 6995,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190565.125,
+    "ram_mib": 6971,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190565.843,
+    "ram_mib": 6992,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190566.671,
+    "ram_mib": 6984,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190567.437,
+    "ram_mib": 7028,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190568.39,
+    "ram_mib": 7006,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190569.125,
+    "ram_mib": 6961,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190569.828,
+    "ram_mib": 6924,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190570.515,
+    "ram_mib": 6898,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190571.203,
+    "ram_mib": 6874,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190571.875,
+    "ram_mib": 6821,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190572.546,
+    "ram_mib": 6861,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190573.187,
+    "ram_mib": 6904,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190573.89,
+    "ram_mib": 6847,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190574.64,
+    "ram_mib": 6977,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190575.265,
+    "ram_mib": 6878,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190575.921,
+    "ram_mib": 6874,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190576.578,
+    "ram_mib": 6828,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190577.312,
+    "ram_mib": 6813,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190577.968,
+    "ram_mib": 6847,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190578.609,
+    "ram_mib": 6831,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190579.265,
+    "ram_mib": 6819,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190579.968,
+    "ram_mib": 6861,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190580.609,
+    "ram_mib": 6878,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190581.296,
+    "ram_mib": 6883,
+    "vram_mib": 2391
+  },
+  {
+    "monotonic_s": 190581.968,
+    "ram_mib": 6915,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190582.671,
+    "ram_mib": 7007,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190583.343,
+    "ram_mib": 6936,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190584.031,
+    "ram_mib": 6873,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190584.734,
+    "ram_mib": 6853,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190585.406,
+    "ram_mib": 6851,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190586.078,
+    "ram_mib": 6850,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190586.734,
+    "ram_mib": 6788,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190587.375,
+    "ram_mib": 6751,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190588.015,
+    "ram_mib": 6731,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190588.671,
+    "ram_mib": 6721,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190589.328,
+    "ram_mib": 6674,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190589.968,
+    "ram_mib": 6657,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190590.578,
+    "ram_mib": 6660,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190591.234,
+    "ram_mib": 6745,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190591.89,
+    "ram_mib": 6721,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190592.546,
+    "ram_mib": 6672,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190593.203,
+    "ram_mib": 6644,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190593.875,
+    "ram_mib": 6616,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190594.546,
+    "ram_mib": 6621,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190595.187,
+    "ram_mib": 6602,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190595.859,
+    "ram_mib": 6632,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190596.578,
+    "ram_mib": 6646,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190597.234,
+    "ram_mib": 6725,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190597.937,
+    "ram_mib": 6759,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190598.593,
+    "ram_mib": 6703,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190599.25,
+    "ram_mib": 6672,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190599.875,
+    "ram_mib": 6647,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190600.515,
+    "ram_mib": 6621,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190601.14,
+    "ram_mib": 6611,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190601.796,
+    "ram_mib": 6599,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190602.484,
+    "ram_mib": 6596,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190603.156,
+    "ram_mib": 6599,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190603.812,
+    "ram_mib": 6603,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190604.484,
+    "ram_mib": 6689,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190605.187,
+    "ram_mib": 6690,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190605.89,
+    "ram_mib": 6688,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190607.015,
+    "ram_mib": 6709,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190607.765,
+    "ram_mib": 6806,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190608.546,
+    "ram_mib": 6825,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190609.234,
+    "ram_mib": 6791,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190609.937,
+    "ram_mib": 6748,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190610.625,
+    "ram_mib": 6718,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190611.765,
+    "ram_mib": 6806,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190612.64,
+    "ram_mib": 7025,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190613.39,
+    "ram_mib": 6939,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190614.328,
+    "ram_mib": 6928,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190615.015,
+    "ram_mib": 7018,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190615.687,
+    "ram_mib": 6883,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190616.375,
+    "ram_mib": 6838,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190617.015,
+    "ram_mib": 6775,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190617.703,
+    "ram_mib": 6737,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190618.359,
+    "ram_mib": 6625,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190619.046,
+    "ram_mib": 6570,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190619.718,
+    "ram_mib": 6457,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190620.343,
+    "ram_mib": 6507,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190620.921,
+    "ram_mib": 6583,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190621.531,
+    "ram_mib": 6606,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190622.156,
+    "ram_mib": 6567,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190622.812,
+    "ram_mib": 6625,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190623.546,
+    "ram_mib": 6608,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190624.218,
+    "ram_mib": 6641,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190624.89,
+    "ram_mib": 6632,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190625.578,
+    "ram_mib": 6653,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190626.25,
+    "ram_mib": 6637,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190626.921,
+    "ram_mib": 6641,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190627.562,
+    "ram_mib": 6605,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190628.265,
+    "ram_mib": 6595,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190629.218,
+    "ram_mib": 6545,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190629.89,
+    "ram_mib": 6714,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190630.593,
+    "ram_mib": 6689,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190631.234,
+    "ram_mib": 6604,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190631.859,
+    "ram_mib": 6568,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190632.5,
+    "ram_mib": 6591,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190633.25,
+    "ram_mib": 6637,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190634.078,
+    "ram_mib": 6814,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190635.093,
+    "ram_mib": 6857,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190635.89,
+    "ram_mib": 6988,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190636.562,
+    "ram_mib": 6887,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190637.218,
+    "ram_mib": 6835,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190637.875,
+    "ram_mib": 6763,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190638.531,
+    "ram_mib": 6761,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190639.187,
+    "ram_mib": 6741,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190639.859,
+    "ram_mib": 6603,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190640.484,
+    "ram_mib": 6563,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190641.14,
+    "ram_mib": 6581,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190641.796,
+    "ram_mib": 6636,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190642.453,
+    "ram_mib": 6634,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190643.125,
+    "ram_mib": 6590,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190643.796,
+    "ram_mib": 6769,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190644.437,
+    "ram_mib": 6696,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190645.109,
+    "ram_mib": 6642,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190645.781,
+    "ram_mib": 6608,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190646.406,
+    "ram_mib": 6627,
+    "vram_mib": 2393
+  },
+  {
+    "monotonic_s": 190647.046,
+    "ram_mib": 6720,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190647.687,
+    "ram_mib": 6665,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190648.343,
+    "ram_mib": 6614,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190648.984,
+    "ram_mib": 6578,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190649.64,
+    "ram_mib": 6612,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190650.296,
+    "ram_mib": 6643,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190650.953,
+    "ram_mib": 6626,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190651.609,
+    "ram_mib": 6570,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190652.265,
+    "ram_mib": 6577,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190652.937,
+    "ram_mib": 6619,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190653.578,
+    "ram_mib": 6644,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190654.234,
+    "ram_mib": 6674,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190654.921,
+    "ram_mib": 6716,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190655.609,
+    "ram_mib": 6699,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190656.234,
+    "ram_mib": 6701,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190656.906,
+    "ram_mib": 6685,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190657.718,
+    "ram_mib": 6647,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190658.406,
+    "ram_mib": 6958,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190659.078,
+    "ram_mib": 6874,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190659.734,
+    "ram_mib": 6791,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190660.406,
+    "ram_mib": 6780,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190661.078,
+    "ram_mib": 6642,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190661.734,
+    "ram_mib": 6602,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190662.406,
+    "ram_mib": 6550,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190663.046,
+    "ram_mib": 6489,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190663.671,
+    "ram_mib": 6431,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190664.296,
+    "ram_mib": 6481,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190664.937,
+    "ram_mib": 6503,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190665.578,
+    "ram_mib": 6532,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190666.25,
+    "ram_mib": 6557,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190666.906,
+    "ram_mib": 6611,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190667.562,
+    "ram_mib": 6641,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190668.203,
+    "ram_mib": 6568,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190668.843,
+    "ram_mib": 6511,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190669.5,
+    "ram_mib": 6572,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190670.14,
+    "ram_mib": 6654,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190670.875,
+    "ram_mib": 6862,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190671.578,
+    "ram_mib": 6783,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190672.265,
+    "ram_mib": 6738,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190672.937,
+    "ram_mib": 6699,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190673.578,
+    "ram_mib": 6658,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190674.234,
+    "ram_mib": 6547,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190674.89,
+    "ram_mib": 6514,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190675.531,
+    "ram_mib": 6586,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190676.171,
+    "ram_mib": 6619,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190676.812,
+    "ram_mib": 6623,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190677.437,
+    "ram_mib": 6631,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190678.109,
+    "ram_mib": 6602,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190678.734,
+    "ram_mib": 6591,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190679.39,
+    "ram_mib": 6560,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190680.015,
+    "ram_mib": 6567,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190680.656,
+    "ram_mib": 6561,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190681.281,
+    "ram_mib": 6570,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190681.921,
+    "ram_mib": 6593,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190682.562,
+    "ram_mib": 6614,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190683.218,
+    "ram_mib": 6542,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190683.859,
+    "ram_mib": 6554,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190684.484,
+    "ram_mib": 6564,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190685.14,
+    "ram_mib": 6581,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190685.812,
+    "ram_mib": 6592,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190686.437,
+    "ram_mib": 6574,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190687.109,
+    "ram_mib": 6536,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190687.75,
+    "ram_mib": 6576,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190688.421,
+    "ram_mib": 6900,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190689.093,
+    "ram_mib": 6832,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190689.765,
+    "ram_mib": 6788,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190690.437,
+    "ram_mib": 6713,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190691.109,
+    "ram_mib": 6689,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190691.765,
+    "ram_mib": 6583,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190692.421,
+    "ram_mib": 6517,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190693.078,
+    "ram_mib": 6407,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190693.718,
+    "ram_mib": 6389,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190694.359,
+    "ram_mib": 6389,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190695.015,
+    "ram_mib": 6401,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190695.64,
+    "ram_mib": 6418,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190696.281,
+    "ram_mib": 6357,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190696.921,
+    "ram_mib": 6389,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190697.562,
+    "ram_mib": 6419,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190698.187,
+    "ram_mib": 6463,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190698.828,
+    "ram_mib": 6477,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190699.468,
+    "ram_mib": 6502,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190700.109,
+    "ram_mib": 6525,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190700.734,
+    "ram_mib": 6557,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190701.39,
+    "ram_mib": 6555,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190702.015,
+    "ram_mib": 6562,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190702.64,
+    "ram_mib": 6573,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190703.281,
+    "ram_mib": 6576,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190703.937,
+    "ram_mib": 6513,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190704.593,
+    "ram_mib": 6557,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190705.312,
+    "ram_mib": 6768,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190706.015,
+    "ram_mib": 6785,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190706.765,
+    "ram_mib": 6878,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190707.468,
+    "ram_mib": 6886,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190708.125,
+    "ram_mib": 6845,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190708.781,
+    "ram_mib": 6778,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190709.437,
+    "ram_mib": 6763,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190710.093,
+    "ram_mib": 6749,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190710.75,
+    "ram_mib": 6712,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190711.375,
+    "ram_mib": 6631,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190712.015,
+    "ram_mib": 6533,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190712.656,
+    "ram_mib": 6399,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190713.296,
+    "ram_mib": 6379,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190713.968,
+    "ram_mib": 6396,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190714.609,
+    "ram_mib": 6464,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190715.25,
+    "ram_mib": 6493,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190715.875,
+    "ram_mib": 6518,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190716.515,
+    "ram_mib": 6551,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190717.187,
+    "ram_mib": 6558,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190717.828,
+    "ram_mib": 6581,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190718.484,
+    "ram_mib": 6607,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190719.14,
+    "ram_mib": 6596,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190719.765,
+    "ram_mib": 6520,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190720.437,
+    "ram_mib": 6540,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190721.062,
+    "ram_mib": 6536,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190721.687,
+    "ram_mib": 6550,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190722.343,
+    "ram_mib": 6557,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190722.968,
+    "ram_mib": 6567,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190723.64,
+    "ram_mib": 6579,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190724.828,
+    "ram_mib": 6705,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190726.296,
+    "ram_mib": 6965,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190727.046,
+    "ram_mib": 7064,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190727.843,
+    "ram_mib": 7063,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190728.578,
+    "ram_mib": 6994,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190729.25,
+    "ram_mib": 6973,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190729.968,
+    "ram_mib": 6925,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190730.64,
+    "ram_mib": 6926,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190731.312,
+    "ram_mib": 6915,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190731.968,
+    "ram_mib": 6868,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190732.625,
+    "ram_mib": 6849,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190733.25,
+    "ram_mib": 6834,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190733.937,
+    "ram_mib": 6821,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190734.656,
+    "ram_mib": 6834,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190735.328,
+    "ram_mib": 6865,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190736.046,
+    "ram_mib": 6860,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190736.687,
+    "ram_mib": 6858,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190737.39,
+    "ram_mib": 6958,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190738.046,
+    "ram_mib": 6892,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190738.718,
+    "ram_mib": 6849,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190739.39,
+    "ram_mib": 6854,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190740.093,
+    "ram_mib": 6857,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190740.875,
+    "ram_mib": 6870,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190741.625,
+    "ram_mib": 6857,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190742.312,
+    "ram_mib": 6877,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190743.015,
+    "ram_mib": 6862,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190743.687,
+    "ram_mib": 6872,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190744.375,
+    "ram_mib": 6890,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190745.0,
+    "ram_mib": 6806,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190745.656,
+    "ram_mib": 6800,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190746.296,
+    "ram_mib": 6787,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190746.906,
+    "ram_mib": 6780,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190747.718,
+    "ram_mib": 7003,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190748.468,
+    "ram_mib": 6986,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190749.171,
+    "ram_mib": 6866,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190749.859,
+    "ram_mib": 6858,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190750.671,
+    "ram_mib": 6932,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190751.39,
+    "ram_mib": 6898,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190752.093,
+    "ram_mib": 6782,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190752.765,
+    "ram_mib": 6775,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190753.421,
+    "ram_mib": 6757,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190754.093,
+    "ram_mib": 6671,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190754.75,
+    "ram_mib": 6664,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190755.453,
+    "ram_mib": 6692,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190756.109,
+    "ram_mib": 6724,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190756.734,
+    "ram_mib": 6706,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190757.39,
+    "ram_mib": 6692,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190758.125,
+    "ram_mib": 6706,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190758.765,
+    "ram_mib": 6706,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190759.406,
+    "ram_mib": 6709,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190760.125,
+    "ram_mib": 6913,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190761.015,
+    "ram_mib": 6989,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190761.859,
+    "ram_mib": 7013,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190762.562,
+    "ram_mib": 7010,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190763.375,
+    "ram_mib": 6975,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190764.234,
+    "ram_mib": 7116,
+    "vram_mib": 2473
+  },
+  {
+    "monotonic_s": 190765.031,
+    "ram_mib": 7175,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190765.828,
+    "ram_mib": 7284,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190766.75,
+    "ram_mib": 7352,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190767.765,
+    "ram_mib": 7356,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190768.484,
+    "ram_mib": 7269,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190769.64,
+    "ram_mib": 7379,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190770.343,
+    "ram_mib": 7246,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190770.953,
+    "ram_mib": 7201,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190771.64,
+    "ram_mib": 7189,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190772.296,
+    "ram_mib": 7150,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190772.968,
+    "ram_mib": 7109,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190773.609,
+    "ram_mib": 7097,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190774.312,
+    "ram_mib": 7074,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190774.968,
+    "ram_mib": 7046,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190775.625,
+    "ram_mib": 7029,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190776.265,
+    "ram_mib": 7001,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190776.921,
+    "ram_mib": 6980,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190777.531,
+    "ram_mib": 6957,
+    "vram_mib": 2479
+  },
+  {
+    "monotonic_s": 190778.14,
+    "ram_mib": 6938,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190778.781,
+    "ram_mib": 6947,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190779.406,
+    "ram_mib": 7051,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190780.015,
+    "ram_mib": 7074,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190780.671,
+    "ram_mib": 7026,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190781.359,
+    "ram_mib": 7027,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190782.093,
+    "ram_mib": 6983,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190782.781,
+    "ram_mib": 7009,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190783.625,
+    "ram_mib": 6993,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190784.359,
+    "ram_mib": 7020,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190785.031,
+    "ram_mib": 6974,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190785.703,
+    "ram_mib": 6955,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190786.453,
+    "ram_mib": 6940,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190787.218,
+    "ram_mib": 6954,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190787.984,
+    "ram_mib": 7011,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190788.89,
+    "ram_mib": 7096,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190789.875,
+    "ram_mib": 7236,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190790.578,
+    "ram_mib": 7167,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190791.234,
+    "ram_mib": 7066,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190791.906,
+    "ram_mib": 7018,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190792.546,
+    "ram_mib": 6992,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190793.25,
+    "ram_mib": 7063,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190793.921,
+    "ram_mib": 7037,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190794.656,
+    "ram_mib": 7054,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190795.39,
+    "ram_mib": 7030,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190796.078,
+    "ram_mib": 6997,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190796.734,
+    "ram_mib": 6898,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190797.39,
+    "ram_mib": 6736,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190798.015,
+    "ram_mib": 6704,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190798.687,
+    "ram_mib": 6675,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190799.328,
+    "ram_mib": 6664,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190799.953,
+    "ram_mib": 6688,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190800.609,
+    "ram_mib": 6703,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190801.25,
+    "ram_mib": 6714,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190801.921,
+    "ram_mib": 6692,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190802.546,
+    "ram_mib": 6678,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190803.187,
+    "ram_mib": 6651,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190803.828,
+    "ram_mib": 6641,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190804.468,
+    "ram_mib": 6710,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190805.093,
+    "ram_mib": 6743,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190805.734,
+    "ram_mib": 6769,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190806.39,
+    "ram_mib": 6768,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190807.046,
+    "ram_mib": 6873,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190807.781,
+    "ram_mib": 6862,
+    "vram_mib": 2395
+  },
+  {
+    "monotonic_s": 190808.437,
+    "ram_mib": 6906,
+    "vram_mib": 2482
+  },
+  {
+    "monotonic_s": 190809.109,
+    "ram_mib": 6767,
+    "vram_mib": 2482
+  }
+]

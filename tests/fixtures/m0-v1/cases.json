@@ -1,0 +1,213 @@
+{
+  "revision": "m0-v1",
+  "cases": [
+    {
+      "id": "Q01",
+      "project": "atlas",
+      "question": "Which database holds checkout records?",
+      "expected": "answer",
+      "answer": "SQLite",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 1
+      }
+    },
+    {
+      "id": "Q02",
+      "project": "atlas",
+      "question": "How long can someone keep a loan?",
+      "expected": "answer",
+      "answer": "14 days",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 1
+      }
+    },
+    {
+      "id": "Q03",
+      "project": "atlas",
+      "question": "At what time does the checkout desk close?",
+      "expected": "answer",
+      "answer": "17:30",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 1
+      }
+    },
+    {
+      "id": "Q04",
+      "project": "atlas",
+      "question": "Which format does the nightly export use?",
+      "expected": "answer",
+      "answer": "CSV",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 1
+      }
+    },
+    {
+      "id": "Q05",
+      "project": "atlas",
+      "question": "Which room hosts the pilot?",
+      "expected": "answer",
+      "answer": "B204",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 2
+      }
+    },
+    {
+      "id": "Q06",
+      "project": "atlas",
+      "question": "Who owns this pilot?",
+      "expected": "answer",
+      "answer": "library desk",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 2
+      }
+    },
+    {
+      "id": "Q07",
+      "project": "atlas",
+      "question": "When does the pilot start?",
+      "expected": "answer",
+      "answer": "12 January 2027",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 2
+      }
+    },
+    {
+      "id": "Q08",
+      "project": "atlas",
+      "question": "What happens if someone tries to check out while offline?",
+      "expected": "answer",
+      "answer": "local queue",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 2
+      }
+    },
+    {
+      "id": "Q09",
+      "project": "atlas",
+      "question": "What color is our storage cabinet?",
+      "expected": "abstain",
+      "answer": null,
+      "citation": null
+    },
+    {
+      "id": "Q10",
+      "project": "atlas",
+      "question": "What is the budget for this pilot?",
+      "expected": "abstain",
+      "answer": null,
+      "citation": null
+    },
+    {
+      "id": "Q11",
+      "project": "birch",
+      "question": "Which database holds checkout records?",
+      "expected": "answer",
+      "answer": "PostgreSQL",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 1
+      }
+    },
+    {
+      "id": "Q12",
+      "project": "birch",
+      "question": "How long can someone keep a loan?",
+      "expected": "answer",
+      "answer": "7 days",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 1
+      }
+    },
+    {
+      "id": "Q13",
+      "project": "birch",
+      "question": "At what time does the checkout desk close?",
+      "expected": "answer",
+      "answer": "19:00",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 1
+      }
+    },
+    {
+      "id": "Q14",
+      "project": "birch",
+      "question": "Which format does the nightly export use?",
+      "expected": "answer",
+      "answer": "JSON",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 1
+      }
+    },
+    {
+      "id": "Q15",
+      "project": "birch",
+      "question": "Which room hosts the pilot?",
+      "expected": "answer",
+      "answer": "C108",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 2
+      }
+    },
+    {
+      "id": "Q16",
+      "project": "birch",
+      "question": "Who owns this pilot?",
+      "expected": "answer",
+      "answer": "campus lab",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 2
+      }
+    },
+    {
+      "id": "Q17",
+      "project": "birch",
+      "question": "When does the pilot start?",
+      "expected": "answer",
+      "answer": "19 January 2027",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 2
+      }
+    },
+    {
+      "id": "Q18",
+      "project": "birch",
+      "question": "What happens if someone tries to check out while offline?",
+      "expected": "answer",
+      "answer": "disabled",
+      "citation": {
+        "file": "handbook.pdf",
+        "page": 2
+      }
+    },
+    {
+      "id": "Q19",
+      "project": "birch",
+      "question": "What badge prefix does our pilot use?",
+      "expected": "abstain",
+      "answer": null,
+      "citation": null
+    },
+    {
+      "id": "Q20",
+      "project": "birch",
+      "question": "What is the budget for this pilot?",
+      "expected": "abstain",
+      "answer": null,
+      "citation": null
+    }
+  ]
+}

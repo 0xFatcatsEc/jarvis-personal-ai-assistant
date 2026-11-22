@@ -1,0 +1,108 @@
+{
+  "started": "2026-11-22T16:02:48.441310+00:00",
+  "status": "incomplete",
+  "order": [
+    "qwen3:4b",
+    "qwen3:8b"
+  ],
+  "fixtures": {
+    "passages.json": "7c3911f9761355fc6df0e211a12a55a761a954cae6e008e965c30b6d8d2f360a",
+    "cases.json": "631b21ce2d226840e67c3651526d8b6e9b0a276de61a265245a715be3a24d5d7",
+    "atlas/handbook.pdf": "e8f85ee524dfc89d81c012ac41ac0a53cc8b5a67b9e1f675beca4659586cd898",
+    "birch/handbook.pdf": "82cfd2840356f7363c8cb6703136add4b3f20868ac8a5c4fae04352e56cc7875",
+    "coding-v1.json": "0a0597fdf2fea7a2fe59e23025b7335430ceaa623e275343a707392c57ac8fad"
+  },
+  "options": {
+    "num_ctx": 4096,
+    "num_predict": 512,
+    "temperature": 0,
+    "seed": 41
+  },
+  "think": false,
+  "hardware": {
+    "collected_at_utc": "2026-11-22T16:02:47.9864694+00:00",
+    "manufacturer": "Micro-Star International Co., Ltd.",
+    "model": "Thin A15 B7UC",
+    "cpu": "AMD Ryzen 5 7535HS with Radeon Graphics        ",
+    "windows": "Microsoft Windows 11 Home Single Language",
+    "build": "26300",
+    "ram_bytes": 7738015744,
+    "system_volume_total_bytes": 482343907328,
+    "system_volume_free_bytes": 135584669696,
+    "display_adapters": [
+      {
+        "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+        "windows_driver": "32.0.16.1687"
+      },
+      {
+        "name": "AMD Radeon(TM) 660M",
+        "windows_driver": "32.0.11020.16"
+      }
+    ],
+    "nvidia_gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+        "dedicated_mib": 4096,
+        "driver": "616.87"
+      }
+    ],
+    "ac_line": "connected",
+    "power_scheme": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+    "vscode_process_count": 21
+  },
+  "server": {
+    "version": "0.40.17"
+  },
+  "models": {
+    "qwen3:4b": {
+      "name": "qwen3:4b",
+      "model": "qwen3:4b",
+      "modified_at": "2026-11-22T22:24:35.3235214+08:00",
+      "size": 2497293931,
+      "digest": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen3",
+        "families": [
+          "qwen3"
+        ],
+        "parameter_size": "4.0B",
+        "quantization_level": "Q4_K_M",
+        "context_length": 262144,
+        "embedding_length": 2560,
+        "runner": "ggml"
+      },
+      "capabilities": [
+        "completion",
+        "tools",
+        "thinking"
+      ]
+    },
+    "qwen3:8b": {
+      "name": "qwen3:8b",
+      "model": "qwen3:8b",
+      "modified_at": "2026-11-23T00:00:16.6010296+08:00",
+      "size": 5225388164,
+      "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen3",
+        "families": [
+          "qwen3"
+        ],
+        "parameter_size": "8.2B",
+        "quantization_level": "Q4_K_M",
+        "context_length": 40960,
+        "embedding_length": 4096,
+        "runner": "ggml"
+      },
+      "capabilities": [
+        "completion",
+        "tools",
+        "thinking"
+      ]
+    }
+  }
+}

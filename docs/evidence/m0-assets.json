@@ -1,0 +1,64 @@
+{
+  "backlog": "1.1.2.1",
+  "verified_at_utc": "2026-11-22T14:28:58.170006+00:00",
+  "file_count": 11,
+  "total_bytes": 4566729395,
+  "inventory_sha256": "64e7f5863063e5ff21ad244449f4465c49f23dc81f25bb905243abae9501bdde",
+  "verified": [
+    {
+      "path": "installers/OllamaSetup-0.40.17.exe",
+      "sha256": "2eeb9ff7ef83902b5d48562dbaf0af5489829c3d52435fb8067ddad23cb33c65",
+      "bytes": 1857946272
+    },
+    {
+      "path": "ollama/models/manifests/registry.ollama.ai/library/qwen3/4b",
+      "sha256": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+      "bytes": 859
+    },
+    {
+      "path": "ollama/models/blobs/sha256-e18a783aae5525fd2852fc94c985541a77e791e034abc2d3056474d59de336fc",
+      "sha256": "e18a783aae5525fd2852fc94c985541a77e791e034abc2d3056474d59de336fc",
+      "bytes": 487
+    },
+    {
+      "path": "ollama/models/blobs/sha256-3e4cb14174460404e7a233e531675303b2fbf7749c02f91864fe311ab6344e4f",
+      "sha256": "3e4cb14174460404e7a233e531675303b2fbf7749c02f91864fe311ab6344e4f",
+      "bytes": 2497280480
+    },
+    {
+      "path": "ollama/models/blobs/sha256-2d54db2b9bb29ce7db54fea63a891f5859603813c555b1f88b5e0994652897f9",
+      "sha256": "2d54db2b9bb29ce7db54fea63a891f5859603813c555b1f88b5e0994652897f9",
+      "bytes": 1506
+    },
+    {
+      "path": "ollama/models/blobs/sha256-d18a5cc71b84bc4af394a31116bd3932b42241de70c77d2b76d69a314ec8aa12",
+      "sha256": "d18a5cc71b84bc4af394a31116bd3932b42241de70c77d2b76d69a314ec8aa12",
+      "bytes": 11338
+    },
+    {
+      "path": "ollama/models/blobs/sha256-cff3f395ef3756ab63e58b0ad1b32bb6f802905cae1472e6a12034e4246fbbdb",
+      "sha256": "cff3f395ef3756ab63e58b0ad1b32bb6f802905cae1472e6a12034e4246fbbdb",
+      "bytes": 120
+    },
+    {
+      "path": "whisper/ggml-base.bin",
+      "sha256": "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe",
+      "bytes": 147951465
+    },
+    {
+      "path": "piper/en_US-ljspeech-medium.onnx",
+      "sha256": "6f52a751e2349abe7a76735eb09dc1875298c77ea2342ffd2fef79ff81b87f22",
+      "bytes": 63531379
+    },
+    {
+      "path": "piper/en_US-ljspeech-medium.onnx.json",
+      "sha256": "141d612cc0a95ed7efc1ca936b845c2364967f2e9217c5dbfcf69fc4d6c65860",
+      "bytes": 4972
+    },
+    {
+      "path": "piper/MODEL_CARD",
+      "sha256": "fbee1529c89d36b3fe76d7e9f3f832dce17f44900a52d76a9bda735654766b4d",
+      "bytes": 517
+    }
+  ]
+}
