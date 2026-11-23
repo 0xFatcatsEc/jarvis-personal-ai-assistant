@@ -13,7 +13,7 @@ $etl = Join-Path $dir 'traffic.etl'
 $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
     [Security.Principal.WindowsBuiltInRole]::Administrator)
 if ($Action -eq 'Run' -and $admin) { throw 'Run the desktop workload as the ordinary desktop user.' }
-if ($Action -ne 'Run' -and -not $admin) { throw 'The trace controller requires elevated Windows PowerShell.' }
+if ($Action -in @('Arm','Stop') -and -not $admin) { throw 'The trace controller requires elevated Windows PowerShell.' }
 function Save-Json($Object,[string]$File) {
     $Object | ConvertTo-Json -Depth 6 | Set-Content -Encoding UTF8 -LiteralPath (Join-Path $dir $File)
 }
@@ -82,6 +82,7 @@ if ($Action -eq 'Arm') {
 $arm = Get-Content -LiteralPath (Join-Path $dir 'arm.json') -Raw | ConvertFrom-Json
 if ($arm.mode -ne $Mode -or $arm.run -ne $RunId -or $arm.machine -ne $env:COMPUTERNAME) { throw 'Journal mismatch.' }
 if ($Action -eq 'Run') {
+    if (Test-Path -LiteralPath (Join-Path $dir 'stopped.json')) { throw 'This recording has stopped. Arm a fresh RunId.' }
     if (Test-Path -LiteralPath (Join-Path $dir 'workload.json')) { throw 'This run already has a workload journal.' }
     # Creation time prevents a snapshot from assigning earlier events to a recycled PID.
     Save-Processes 'processes.json'
@@ -89,7 +90,7 @@ if ($Action -eq 'Run') {
     Save-Json $before 'before-workload.json'
     if ($Mode -ne 'Rehearsal') {
         if ($before.bootType -ne 0 -or $before.bootRecord -eq $arm.before.bootRecord) {
-            throw 'Run requires a fresh full boot after Arm.'
+            throw "Run requires a fresh full boot after Arm. Kernel-Boot type=$($before.bootType), record=$($before.bootRecord), armed record=$($arm.before.bootRecord). Save your work, run shutdown.exe /s /t 0, power on and retry Run. Wait for Run to succeed before Finish."
         }
         if ($Mode -eq 'Disconnected' -and ($before.internet -or $before.profiles -or $before.physicalLinks -or
             @($before.routeInterfaces | Where-Object state -ne 'Disconnected').Count)) {
@@ -112,7 +113,19 @@ if ($Action -eq 'Run') {
     $result = $LASTEXITCODE
     Save-Json (Snapshot) 'after-workload.json'
     if ($result) { throw 'The measured desktop workload failed.' }
+    Write-Output "Workload completed for $RunId. Run Finish in administrator PowerShell."
     return
+}
+if ($Action -eq 'Finish') {
+    $journal = Join-Path $dir 'workload.json'
+    $after = Join-Path $dir 'after-workload.json'
+    $completed = if (Test-Path -LiteralPath $journal -PathType Leaf) {
+        (Get-Content -Raw -LiteralPath $journal | ConvertFrom-Json).completed
+    }
+    if ($completed -isnot [bool] -or -not $completed -or -not (Test-Path -LiteralPath $after -PathType Leaf)) {
+        throw 'Finish requires a completed workload and its after-workload snapshot. Check the Run output. Use Stop only to abandon the recording.'
+    }
+    if (-not $admin) { throw 'The trace controller requires elevated Windows PowerShell.' }
 }
 if (-not (Test-Path -LiteralPath (Join-Path $dir 'stopped.json'))) {
     if ($arm.collector -eq 'wpr-boot-v1') {
@@ -126,8 +139,17 @@ if (-not (Test-Path -LiteralPath (Join-Path $dir 'stopped.json'))) {
         $losses = @(Get-CimInstance Win32_PerfRawData_Counters_EventTracingforWindowsSession -ErrorAction SilentlyContinue |
             Where-Object Name -like ('WPR_initiated_' + $name + '_*') | Select-Object Name, EventsLost)
         Save-Json @{sessions=$losses} 'source-loss.json'
-        $stop = if ($Mode -eq 'Rehearsal') { '-stop' } else { '-stopboot' }
-        & wpr.exe $stop $etl -skipPdbGen -instancename $name
+        # On this WPR build -stopboot treats a trailing -skipPdbGen as the output filename.
+        Push-Location -LiteralPath $dir
+        try {
+            if ($Mode -eq 'Rehearsal') {
+                & wpr.exe -stop traffic.etl -skipPdbGen -instancename $name
+            } else {
+                & wpr.exe -stopboot traffic.etl -instancename $name
+            }
+        } finally {
+            Pop-Location
+        }
     } else {
         & netsh.exe trace stop "sessionname=$name"
     }
@@ -135,6 +157,9 @@ if (-not (Test-Path -LiteralPath (Join-Path $dir 'stopped.json'))) {
     Save-Json (Snapshot) 'stopped.json'
 }
 if ($Action -eq 'Stop') { return }
+if (-not (Test-Path -LiteralPath $etl -PathType Leaf) -or (Get-Item -LiteralPath $etl).Length -eq 0) {
+    throw 'The stopped recording contains no usable traffic.etl. Preserve the journals and arm a fresh RunId.'
+}
 if (-not (Test-Path -LiteralPath (Join-Path $dir 'processes-final.json'))) {
     Save-Processes 'processes-final.json'
 }

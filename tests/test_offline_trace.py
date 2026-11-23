@@ -1,6 +1,8 @@
 """Windows acceptance logic for process-attributed ETW evidence (no network needed)."""
 import importlib.util
+import json
 import os
+import subprocess
 import tempfile
 import unittest
 from datetime import UTC, datetime
@@ -177,12 +179,46 @@ class TraceTests(unittest.TestCase):
         self.assertEqual(trace.activity(*row), (20, "transport", "loopback"))
 
 
+@unittest.skipUnless(os.name == "nt", "requires Windows PowerShell")
+class TraceControllerTests(unittest.TestCase):
+    def test_premature_finish_preserves_recording(self):
+        shell = ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command"]
+        profile = subprocess.check_output(shell + ["[Environment]::GetFolderPath('LocalApplicationData')"],
+                                          text=True).strip()
+        root = Path(profile) / "StylusJarvis/traces"
+        root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="test-finish-", dir=root) as temporary:
+            folder = Path(temporary)
+            (folder / "arm.json").write_text(json.dumps(dict(
+                mode="Disconnected", run=folder.name, machine=os.environ["COMPUTERNAME"],
+                collector="wpr-boot-v1")), encoding="utf-8")
+            journal = folder / "workload.json"
+            for completed in (None, False, "true", True):
+                with self.subTest(completed=completed):
+                    if completed is not None:
+                        journal.write_text(json.dumps({"completed": completed}), encoding="utf-8")
+                    after = folder / "after-workload.json"
+                    if completed is True:
+                        after.unlink()  # completed journal, but Run has not saved its final snapshot
+                    else:
+                        after.write_text("{}", encoding="utf-8")
+                    before = set(folder.iterdir())
+                    command = ("function wpr.exe { throw 'Unexpected recorder call' }\n"
+                               "& .\\packaging\\windows\\trace-offline.ps1 -Action Finish "
+                               f"-Mode Disconnected -RunId {folder.name}")
+                    result = subprocess.run(shell + [command], cwd=Path(__file__).resolve().parents[1],
+                                            capture_output=True, text=True, timeout=30)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("Finish requires a completed workload", result.stderr)
+                    self.assertEqual(set(folder.iterdir()), before)
+
+
 @unittest.skipUnless(os.name == "nt" and os.environ.get("STYLUS_BOOT_ACCEPTANCE") == "1",
                      "requires two recorded cold boots on the Windows target")
 class RecordedWindowsPair(unittest.TestCase):
     def test_offline_stack_across_distinct_cold_boots(self):
         root = Path(os.environ["LOCALAPPDATA"]) / "StylusJarvis/traces"
-        directories = [root / os.environ.get("STYLUS_DISCONNECTED_RUN", "cold-disconnected-02"),
+        directories = [root / os.environ.get("STYLUS_DISCONNECTED_RUN", "cold-disconnected-05"),
                        root / os.environ.get("STYLUS_CONNECTED_RUN", "cold-connected-01")]
         self.assertEqual(*(trace.read(folder, "arm.json")["machine"] for folder in directories))
         results = []
