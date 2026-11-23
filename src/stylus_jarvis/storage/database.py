@@ -2,6 +2,7 @@
 import asyncio
 import hashlib
 import sqlite3
+import stat
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from importlib.resources import files
@@ -9,6 +10,28 @@ from pathlib import Path
 from uuid import uuid4
 
 from ..contracts.messages import Code, Failure
+from ..settings import local_data_path
+
+
+def _check_integrity(conn: sqlite3.Connection) -> None:
+    if conn.execute("PRAGMA quick_check").fetchone()[0] != "ok" or conn.execute("PRAGMA foreign_key_check").fetchone():
+        raise Failure(Code.SCHEMA)
+
+
+def _prepare_path(requested: Path) -> Path:
+    path = local_data_path(requested)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path = local_data_path(path)
+    for suffix in ("", "-wal", "-shm", "-journal"):
+        candidate = path.with_name(path.name + suffix)
+        try:
+            info = candidate.lstat()
+        except FileNotFoundError:
+            continue
+        reparse = getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink > 1 or reparse:
+            raise Failure(Code.SETTINGS, field="data_directory")
+    return path
 
 
 class Database:
@@ -26,7 +49,7 @@ class Database:
             return
         conn = None
         try:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path = _prepare_path(self.path)
             conn = sqlite3.connect(self.path, timeout=2, isolation_level=None)
             conn.row_factory = sqlite3.Row
             conn.execute("PRAGMA foreign_keys=ON")
@@ -56,9 +79,12 @@ class Database:
                         backup.close()
                 conn.executescript("BEGIN IMMEDIATE;\n" + raw.decode("utf-8"))
                 conn.execute("INSERT INTO migrations VALUES(?,?)", (version, checksum))
+                _check_integrity(conn)
                 conn.commit()
-            if not migrations or conn.execute("PRAGMA quick_check").fetchone()[0] != "ok" or conn.execute("PRAGMA foreign_key_check").fetchone():
+            if not migrations:
                 raise Failure(Code.SCHEMA)
+            if len(applied) == len(migrations):
+                _check_integrity(conn)
             conn.execute("UPDATE turns SET state='interrupted',ended_at=CURRENT_TIMESTAMP WHERE state='active'")
             self._connection = conn
         except (OSError, sqlite3.Error) as exc:

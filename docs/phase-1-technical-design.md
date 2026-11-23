@@ -111,6 +111,8 @@ M1 and M2 are product milestones shared with other phases. Foundation provisions
 
 **Responsibilities.** `storage/database.py` owns initialization, version checks and connection lifetimes. `storage/repositories.py` owns all application writes. The data file, WAL and shared-memory sidecars stay on the same local disk. [SQLite WAL behavior](https://sqlite.org/wal.html)
 
+**Windows location check.** The default is `%LOCALAPPDATA%\StylusJarvis\data\jarvis.sqlite3`. The writer resolves the database path before creating missing directories and checks it again before opening SQLite. It compares the resolved path with OneDrive roots from the environment and the current user's registered OneDrive accounts. Windows supplies the mount point and drive type of the resolved existing path. Fixed and removable local disks qualify. A dangling junction, UNC path, remote or unknown volume, or redirected journal sidecar blocks startup. Existing database and journal files must each have a single filesystem link. SQLite receives the canonical filename so WAL, SHM and upgrade snapshots use the approved directory. [Windows volume mount points](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getvolumepathnamew) · [Windows drive types](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getdrivetypew)
+
 **Internal interfaces.** Open returns a store capability and schema version. Migrate accepts the packaged ordered migration set and yields a verified version. Reconcile reports counts of unfinished turns marked interrupted. Repository commands return a durable receipt only after commit.
 
 | Initial record | Identity and essential constraints |
@@ -126,6 +128,8 @@ M1 and M2 are product milestones shared with other phases. Foundation provisions
 **Dependencies.** Bundled SQLite with FTS5 available for later evidence indexing, packaged `0001_initial.sql` and subsequent migrations, a serialized writer and short-lived read transactions. Only schema work and its own version marker share a migration transaction. Initialize WAL before beginning migrations.
 
 **Failure scenarios.** Too-new schema, corrupt file, checksum disagreement, failed snapshot or failed migration blocks normal writes. Preserve the original store and show a recovery action. Never replace a failed store with a blank database. Use a bounded busy wait, then return store busy; a pinned reader delaying a checkpoint raises a diagnostic. Rollback pairs the matching application build with its snapshot.
+
+**Migration verification.** Run SQLite's integrity and foreign-key checks inside each migration transaction, before committing its ledger entry. A failed check rolls back that migration's schema, data and version marker together. To rehearse rollback, close the upgraded writer, stage the pre-upgrade snapshot in an empty local directory, and reopen it with its matching schema set. This keeps the newer WAL and SHM separate from the restored database. The Windows acceptance suite also exercises FTS5 through a temporary index on the application's connection. [Local store acceptance tests](../tests/test_local_store.py)
 
 **Testing strategy.** Use real files on a Windows temporary local volume. Cover first open, second open, concurrent readers, foreign-key violations, duplicate sequences, newer schemas, interrupted migrations and full-disk simulation. Compare records before and after a migration rehearsal. Test the frozen earlier-schema fixture for the first release.
 

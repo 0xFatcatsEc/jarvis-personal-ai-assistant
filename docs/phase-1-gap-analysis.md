@@ -16,7 +16,7 @@ The original Project Plan supplies the historical goals. The V2 Architecture Rev
 | 1.1.2.2 Compare Qwen builds | Missing at initial audit; now complete | See the [measured report and model decision](../outputs/qwen-msi-02/decision.md). |
 | 1.2.1.1 Project picker | Partial at initial audit; now complete | Windows tests verified distinct IDs for identically named roots, persistence after reopening SQLite, keyboard selection and alias resolution. See [project picker verification](#project-picker-verification). |
 | 1.2.1.2 Bind requests to grants | Complete | Windows acceptance tests cover dispatch, revocation during generation, status-only settlement and delivery of receipts and history. See [request grant verification](#request-grant-verification). |
-| 1.2.2.1 Create local store | Partial | WAL, FK enforcement, schema ledger and atomic operations tested. Validate the actual DB location after reparse resolution; exercise upgrade, rollback and FTS5 capability on shipped binaries. |
+| 1.2.2.1 Create local store | Complete for M1 | Foreign-key enforcement and live WAL placement verified on Windows. Upgrade, rollback and FTS5 passed on the identified application runtime. Final distribution binary verification belongs to packaging. See [local store verification](#local-store-verification). |
 | 1.2.2.2 Stream and reopen history | Partial | Offscreen desktop test streams, saves and reopens with model offline. Tests verify ordered checkpoints, cancellation, deduplication and interrupted reconciliation. Retry and shutdown gaps below. |
 | 1.3.1.1 Guard stack traffic | Partial | Application transport pins numeric loopback, disables proxies and redirects, exposes no cloud route. External Ollama runtime and updater remain independently configured. |
 | 1.3.1.2 Trace offline modes | Missing | No process-attributed cold-boot trace detached from network and connected with offline mode selected. |
@@ -57,7 +57,7 @@ Priority reflects impact within Foundation. These are code-inspection findings u
 3. **High — release-mode offline guarantee is unproven.** Provider loopback checks cover application requests only. Establish a qualified local-only runtime and validate egress from the entire stack.
 4. **Medium — idempotent replay unnecessarily requires Ollama.** Coordinator probes and builds context before looking up a previously committed submission. Resolve scoped prior receipts first. Test replay of an acknowledged submission with the model stopped.
 5. **Medium — shutdown deadline only covers slot waiting.** Desktop subsequently gathers all tasks without a deadline. Report unresolved durability and distinguish forced exit from a clean close.
-6. **Medium — resolved data directory can differ from checked profile.** A junction underneath the accepted base or a mapped network drive can violate local-disk policy. Revalidate final DB directory and volume type before open.
+6. **Medium — resolved data directory could differ from checked profile. Resolved in 1.2.2.1.** The database writer checks the canonical target and its Windows volume type before opening SQLite. The Windows suite covers junctions into a configured OneDrive root and denial of a remote drive type.
 7. **Medium — stale UI state can lose work or mislead.** Selection clears the draft, older command failures can update the new selection’s status, and startup failure re-enables controls without a valid runtime. Add scoped draft retention and a distinct recovery screen.
 8. **Medium — no last-page bound in history rendering.** The repository paginates, but the UI collects all pages in RAM. Two concurrent renders within the same scope can reorder the display. Use bounded pages and view-generation checks.
 9. **Low — migration checksum depends on checkout line endings.** The ledger hashes raw SQL bytes. Enforce LF for packaged SQL or canonicalize bytes consistently before recording the first distributed migration.
@@ -66,7 +66,7 @@ Priority reflects impact within Foundation. These are code-inspection findings u
 
 Session ownership lives across bootstrap, repository and coordinator rather than the blueprint’s session service. Prompt assembly spans repository and router. The UI controller has direct access to concrete repositories and model routing. Scope records reside in messages rather than the planned context module. Move boundaries incrementally when addressing the corresponding lifecycle defects. Preserve the tested SQLite and transport contracts. Future-phase modules have no delivery obligation in this increment.
 
-The database actor has one connection and an unbounded executor work queue. Per-frame authorization and full reply-prefix concatenation each add overhead. Profile sustained streams, large history and mixed workloads before changing these paths. The diagnostics schema and failure envelope need contract tests. End-to-end fault coverage still lacks a real process kill, full disk, suspend/resume, failed upgrade and closed-window late callbacks.
+The database actor has one connection and an unbounded executor work queue. Per-frame authorization and full reply-prefix concatenation each add overhead. Profile sustained streams, large history and mixed workloads before changing these paths. The diagnostics schema and failure envelope need contract tests. End-to-end fault coverage still lacks a real process kill, full disk, suspend/resume and closed-window late callbacks.
 
 ## Next implementation increment
 
@@ -108,5 +108,20 @@ The full Windows suite recorded 28 passes and one skip at picker closure. To rep
 
 Revoking an active turn blocks subsequent fragments and settles the turn as failed with a scope error and an end time. Only previously checkpointed assistant text remains durable. A later grant cannot finalize an earlier active turn, and the original grant cannot settle a turn admitted under the later revision. If completion committed before revocation, the completed turn remains readable with a fresh grant. The Windows desktop test used the signed-in SID, offscreen Qt, real SQLite and a scripted local stream to verify fragment and history delivery. A separate upgrade test reopened a schema-v1 database and verified that the legacy checkpoint survived. [Desktop acceptance test](../tests/test_desktop.py) · [Upgrade test](../tests/test_foundation.py)
 
-The full Windows suite recorded **40 passes and one skip**. All grant tests passed. The existing project-picker symlink case skipped because this Windows account lacks link-creation privileges. Reproduce with `.venv\Scripts\python.exe -B -m unittest discover -s tests -v`. The next sequential subtask is **1.2.2.1 Create local store**.
+The full Windows suite recorded **40 passes and one skip** at grant closure. All grant tests passed. The existing project-picker symlink case skipped because this Windows account lacks link-creation privileges. Reproduce with `.venv\Scripts\python.exe -B -m unittest discover -s tests -v`.
+
+## Local store verification
+
+**1.2.2.1 Create local store — complete for M1, 23 November 2026.** The approved criterion requires enforced foreign keys and a live WAL database outside OneDrive. The Windows acceptance run used an isolated profile, the normal database filename and the repository's application interpreter. [Acceptance tests](../tests/test_local_store.py)
+
+| Check | Evidence |
+|---|---|
+| Live location and constraints | With the writer open through a real directory junction, SQLite reported the canonical main filename via `PRAGMA database_list`. The database, `-wal` and `-shm` existed together in the local target. A foreign-key violation rolled back an earlier valid insert in the same transaction. |
+| Rejected locations | A junction into a configured sync root was denied before the requested child directory was created. Dangling junctions, UNC names and files hard-linked into the sync root were rejected. The mapped-volume case used a real junction and an injected Windows `DRIVE_REMOTE` result. |
+| Upgrade and rollback | The packaged v1-to-v2 migration preserved existing data and created one pre-upgrade snapshot. Reopening v2 did not repeat the upgrade. A snapshot restored into a separate directory opened with the v1 schema and retained its original conversation. Injected SQL and integrity-check failures left v1 schema, data and ledger intact. |
+| FTS5 | A temporary FTS5 table indexed two rows on the writer connection. A phrase query matched the expected row alone. Windows 11 build 26300 ran CPython 3.12.13 with SQLite 3.50.4. The loaded `sqlite3.dll` SHA-256 was `c77ee0f3eb34bda3ed95e9072ba12959bb727d078dd3f2d4900f60aa55a4abfd`. |
+
+All nine local-store tests passed. The full Windows suite recorded 49 passes and one skip for the existing picker symlink test. Repeat the store checks with `.venv\Scripts\python.exe -B -m unittest discover -s tests -p test_local_store.py -v`.
+
+The repository has no standalone desktop distribution yet. Item 1.3.2.1 owns the offline release bundle. Run the FTS5 test with its packaged interpreter to verify the shipped binary at that gate. The next sequential subtask is **1.2.2.2 Stream and reopen history**.
 

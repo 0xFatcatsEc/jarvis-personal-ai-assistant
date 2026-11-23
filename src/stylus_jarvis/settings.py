@@ -44,11 +44,64 @@ def profile_path() -> Path:
     raw = os.getenv("LOCALAPPDATA")
     if not raw or not Path(raw).is_absolute():
         raise Failure(Code.SETTINGS, field="LOCALAPPDATA")
-    result = (Path(raw) / "StylusJarvis").resolve()
-    synced = [Path(v).resolve() for k, v in os.environ.items() if k.lower().startswith("onedrive") and v]
-    if str(result).startswith("\\\\") or any(result.is_relative_to(root) for root in synced):
-        raise Failure(Code.SETTINGS, field="data_directory")
-    return result
+    return local_data_path(Path(raw) / "StylusJarvis")
+
+
+def _onedrive_roots() -> set[Path]:
+    roots = {Path(v) for k, v in os.environ.items() if k.lower().startswith("onedrive") and v}
+    if os.name == "nt":
+        import winreg
+
+        try:
+            accounts = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\OneDrive\Accounts")
+        except FileNotFoundError:
+            return roots
+        with accounts:
+            for index in range(winreg.QueryInfoKey(accounts)[0]):
+                with winreg.OpenKey(accounts, winreg.EnumKey(accounts, index)) as account:
+                    try:
+                        folder, _ = winreg.QueryValueEx(account, "UserFolder")
+                    except FileNotFoundError:
+                        continue
+                    if folder:
+                        roots.add(Path(os.path.expandvars(folder)))
+    return roots
+
+
+def local_data_path(path: Path) -> Path:
+    """Resolve existing ancestors before checking a possibly new data location."""
+    try:
+        if str(path).startswith("\\\\"):
+            raise Failure(Code.SETTINGS, field="data_directory")
+        existing = path.absolute()
+        missing: list[str] = []
+        while True:
+            try:
+                existing.lstat()
+                break
+            except FileNotFoundError:
+                if existing == existing.parent:
+                    raise
+                missing.append(existing.name)
+                existing = existing.parent
+        # Strict resolution rejects inaccessible and dangling reparse targets.
+        ancestor = existing.resolve(strict=True)
+        result = ancestor.joinpath(*reversed(missing)).resolve()
+        if str(result).startswith("\\\\") or any(result.is_relative_to(r.resolve()) for r in _onedrive_roots()):
+            raise Failure(Code.SETTINGS, field="data_directory")
+        if os.name == "nt":
+            import ctypes
+
+            volume = ctypes.create_unicode_buffer(32768)
+            kernel = ctypes.windll.kernel32
+            if not kernel.GetVolumePathNameW(str(ancestor), volume, len(volume)):
+                raise ctypes.WinError()
+            # DRIVE_REMOVABLE and DRIVE_FIXED are local disk volumes.
+            if kernel.GetDriveTypeW(volume.value) not in (2, 3):
+                raise Failure(Code.SETTINGS, field="data_directory")
+        return result
+    except (OSError, RuntimeError) as exc:
+        raise Failure(Code.SETTINGS, field="data_directory") from exc
 
 
 def load(root: Path) -> tuple[Settings, Manifest]:
