@@ -181,6 +181,26 @@ class TraceTests(unittest.TestCase):
 
 @unittest.skipUnless(os.name == "nt", "requires Windows PowerShell")
 class TraceControllerTests(unittest.TestCase):
+    def test_wpr_boot_output_names(self):
+        helper = Path(__file__).resolve().parents[1] / "packaging/windows/resolve-boot-etl.ps1"
+        for names, expected in [
+            (["StylusTrace-fixture"], b"StylusTrace-fixture"),
+            (["-force"], b"-force"),
+            (["traffic.etl", "-force"], b"traffic.etl"),
+            (["logger.etl"], None),
+            (["StylusTrace-fixture", "-force"], None),
+        ]:
+            with self.subTest(names=names), tempfile.TemporaryDirectory(prefix="trace test ") as tmp:
+                directory = Path(tmp)
+                for name in names:
+                    (directory / name).write_bytes(name.encode())
+                result = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-File",
+                                         str(helper), "-Directory", tmp, "-RunId", "fixture"],
+                                        capture_output=True, timeout=30)
+                self.assertEqual(result.returncode == 0, names != ["StylusTrace-fixture", "-force"])
+                target = directory / "traffic.etl"
+                self.assertEqual(target.read_bytes() if target.exists() else None, expected)
+
     def test_premature_finish_preserves_recording(self):
         shell = ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command"]
         profile = subprocess.check_output(shell + ["[Environment]::GetFolderPath('LocalApplicationData')"],
@@ -218,7 +238,7 @@ class TraceControllerTests(unittest.TestCase):
 class RecordedWindowsPair(unittest.TestCase):
     def test_offline_stack_across_distinct_cold_boots(self):
         root = Path(os.environ["LOCALAPPDATA"]) / "StylusJarvis/traces"
-        directories = [root / os.environ.get("STYLUS_DISCONNECTED_RUN", "cold-disconnected-05"),
+        directories = [root / os.environ.get("STYLUS_DISCONNECTED_RUN", "cold-disconnected-06"),
                        root / os.environ.get("STYLUS_CONNECTED_RUN", "cold-connected-01")]
         self.assertEqual(*(trace.read(folder, "arm.json")["machine"] for folder in directories))
         results = []

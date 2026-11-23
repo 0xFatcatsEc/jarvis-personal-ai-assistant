@@ -23,6 +23,15 @@ function Save-Processes([string]$File) {
     })
     Save-Json $rows $File
 }
+function Get-ProfileChanges([DateTimeOffset]$BootUtc, [DateTimeOffset]$UntilUtc) {
+    $channel = 'Microsoft-Windows-NetworkProfile/Operational'
+    if (-not (Get-WinEvent -ListLog $channel).IsEnabled) { throw 'Network profile history is disabled.' }
+    $filter = @{LogName=$channel; StartTime=$BootUtc.LocalDateTime; EndTime=$UntilUtc.LocalDateTime; Id=@(10000,10001)}
+    Get-WinEvent -FilterHashtable $filter -ErrorAction SilentlyContinue -ErrorVariable profileErrors | ForEach-Object {
+        @{id=$_.Id; utc=$_.TimeCreated.ToUniversalTime().ToString('o')}
+    }
+    foreach ($err in $profileErrors) { if ($err.FullyQualifiedErrorId -notlike 'NoMatchingEventsFound*') { throw $err } }
+}
 function Snapshot {
     $boot = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-Kernel-Boot'; Id=27} -MaxEvents 1
     $net = @(Get-NetConnectionProfile)
@@ -96,6 +105,9 @@ if ($Action -eq 'Run') {
             @($before.routeInterfaces | Where-Object state -ne 'Disconnected').Count)) {
             throw 'A network path is active or unknown. Inspect before-workload.json before proceeding.'
         }
+        if ($Mode -eq 'Disconnected' -and @(Get-ProfileChanges $before.bootUtc $before.utc).Count) {
+            throw 'Windows recorded a network profile transition after boot. Use Stop for this RunId. Turn Wi-Fi off before the next full shutdown and keep it off through Finish.'
+        }
         if ($Mode -eq 'Connected' -and (-not $before.internet -or
             -not @($before.routeInterfaces | Where-Object state -eq 'Connected').Count)) {
             throw 'Windows has not confirmed internet connectivity on a connected route.'
@@ -139,13 +151,12 @@ if (-not (Test-Path -LiteralPath (Join-Path $dir 'stopped.json'))) {
         $losses = @(Get-CimInstance Win32_PerfRawData_Counters_EventTracingforWindowsSession -ErrorAction SilentlyContinue |
             Where-Object Name -like ('WPR_initiated_' + $name + '_*') | Select-Object Name, EventsLost)
         Save-Json @{sessions=$losses} 'source-loss.json'
-        # On this WPR build -stopboot treats a trailing -skipPdbGen as the output filename.
         Push-Location -LiteralPath $dir
         try {
             if ($Mode -eq 'Rehearsal') {
                 & wpr.exe -stop traffic.etl -skipPdbGen -instancename $name
             } else {
-                & wpr.exe -stopboot traffic.etl -instancename $name
+                & wpr.exe -stopboot traffic.etl -skipPdbGen -force -instancename $name
             }
         } finally {
             Pop-Location
@@ -157,20 +168,18 @@ if (-not (Test-Path -LiteralPath (Join-Path $dir 'stopped.json'))) {
     Save-Json (Snapshot) 'stopped.json'
 }
 if ($Action -eq 'Stop') { return }
+if ($arm.collector -eq 'wpr-boot-v1' -and $Mode -ne 'Rehearsal') {
+    & (Join-Path $PSScriptRoot 'resolve-boot-etl.ps1') -Directory $dir -RunId $RunId
+}
 if (-not (Test-Path -LiteralPath $etl -PathType Leaf) -or (Get-Item -LiteralPath $etl).Length -eq 0) {
-    throw 'The stopped recording contains no usable traffic.etl. Preserve the journals and arm a fresh RunId.'
+    throw 'No usable merged traffic.etl found. Preserve the run directory for inspection.'
 }
 if (-not (Test-Path -LiteralPath (Join-Path $dir 'processes-final.json'))) {
     Save-Processes 'processes-final.json'
 }
 $measured = Get-Content -Raw -LiteralPath (Join-Path $dir 'before-workload.json') | ConvertFrom-Json
-$bootTime = [DateTimeOffset]::Parse($measured.bootUtc).LocalDateTime
-$channel = 'Microsoft-Windows-NetworkProfile/Operational'
-if (-not (Get-WinEvent -ListLog $channel).IsEnabled) { throw 'Network profile history is disabled.' }
-$changes = @(Get-WinEvent -FilterHashtable @{LogName=$channel; StartTime=$bootTime; Id=@(10000,10001)} -ErrorAction SilentlyContinue -ErrorVariable profileErrors | ForEach-Object {
-    @{id=$_.Id; utc=$_.TimeCreated.ToUniversalTime().ToString('o')}
-})
-foreach ($err in $profileErrors) { if ($err.FullyQualifiedErrorId -notlike 'NoMatchingEventsFound*') { throw $err } }
+$stopped = Get-Content -Raw -LiteralPath (Join-Path $dir 'stopped.json') | ConvertFrom-Json
+$changes = @(Get-ProfileChanges $measured.bootUtc $stopped.utc)
 Save-Json @{events=$changes} 'network-history.json'
 & tracerpt.exe $etl -of XML -gmt -o (Join-Path $dir 'events.xml') -summary (Join-Path $dir 'summary.txt') -y
 if ($LASTEXITCODE) { throw 'ETL conversion failed. Preserve the original ETL.' }

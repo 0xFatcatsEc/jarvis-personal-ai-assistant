@@ -7,22 +7,22 @@ Use this page locally while the laptop is disconnected. Save your work before ea
 1. In administrator PowerShell, arm the named WPR boot capture. The example uses a fresh ID for the retry. Keep the first disconnected run for comparison. Wait for **Arm** to succeed and write `boot-sources.json` before shutting down.
 
    ```powershell
-   .\packaging\windows\trace-offline.ps1 -Action Arm -Mode Disconnected -RunId cold-disconnected-05
+   .\packaging\windows\trace-offline.ps1 -Action Arm -Mode Disconnected -RunId cold-disconnected-06
    ```
 
-2. Turn off Wi-Fi, unplug Ethernet and disconnect any tether, dock network or VPN. Leave those connections off. Save and close your applications, then run `shutdown.exe /s /t 0` for a full shutdown. Wait until the MSI is off, power it on, and sign in. A Fast Startup or resumed boot makes the result inconclusive.
+2. Turn off Wi-Fi, unplug Ethernet and disconnect any tether, dock network or VPN. Switch the Wi-Fi radio off before shutdown and select manual reactivation if offered. Disconnecting from the current SSID alone permits automatic association at the next boot. Keep the radio off through Finish. Save and close your applications, then run `shutdown.exe /s /t 0` for a full shutdown. Wait until the MSI is off, power it on, and sign in. A Fast Startup or resumed boot makes the result inconclusive.
 3. In ordinary PowerShell, run the synthetic desktop conversation and wait for the command to return.
 
    ```powershell
    Set-Location -LiteralPath "$env:OneDrive\Documents\ChatGPT\Jarvis"
-   .\packaging\windows\trace-offline.ps1 -Action Run -Mode Disconnected -RunId cold-disconnected-05
+   .\packaging\windows\trace-offline.ps1 -Action Run -Mode Disconnected -RunId cold-disconnected-06
    ```
 
 4. While still disconnected, open administrator PowerShell in the same repository and finish the recording. Keep Wi-Fi off and Ethernet unplugged until Finish prints the verdict. Reconnect to share that output.
 
    ```powershell
    Set-Location -LiteralPath "$env:OneDrive\Documents\ChatGPT\Jarvis"
-   .\packaging\windows\trace-offline.ps1 -Action Finish -Mode Disconnected -RunId cold-disconnected-05
+   .\packaging\windows\trace-offline.ps1 -Action Finish -Mode Disconnected -RunId cold-disconnected-06
    ```
 
 ## Connected boot with offline mode enabled
@@ -47,10 +47,10 @@ Use this page locally while the laptop is disconnected. Save your work before ea
    Set-Location -LiteralPath "$env:OneDrive\Documents\ChatGPT\Jarvis"
    .\packaging\windows\trace-offline.ps1 -Action Finish -Mode Connected -RunId cold-connected-01
    $traces = Join-Path $env:LOCALAPPDATA 'StylusJarvis\traces'
-   .\.venv\Scripts\python.exe -B packaging\windows\trace_report.py "$traces\cold-disconnected-05" "$traces\cold-connected-01"
+   .\.venv\Scripts\python.exe -B packaging\windows\trace_report.py "$traces\cold-disconnected-06" "$traces\cold-connected-01"
    ```
 
-Each run ID owns a new private directory. For a repeat, use a new ID throughout that run. WPR writes sequential files under that directory, so run the workload promptly after sign-in and stop recording as soon as it finishes. **Run** checks the fresh boot, network state and registered source files before submitting the prompt. Proceed to **Finish** only after **Run** prints its completion message. If the boot check reports type 1 (Fast Startup) or type 2 (resume), keep the recorder armed and perform the full shutdown again. If another check fails, preserve the diagnostics before deciding whether to retry or abandon the run with `-Action Stop`. **Stop** can also cancel an armed capture before shutdown. If only decoding fails, rerun **Finish** against the stopped trace.
+Each run ID owns a new private directory. For a repeat, use a new ID throughout that run. WPR writes sequential files under that directory, so run the workload promptly after sign-in and stop recording as soon as it finishes. **Run** checks the fresh boot, network state and registered source files before submitting the prompt. Proceed to **Finish** only after **Run** prints its completion message. If the boot check reports type 1 (Fast Startup) or type 2 (resume), keep the recorder armed and perform the full shutdown again. If another check fails, preserve the diagnostics before deciding whether to retry or abandon the run with `-Action Stop`. **Stop** can also cancel an armed capture before shutdown. If only decoding fails, rerun **Finish** against the stopped trace. Finish recognizes the instance-named and `-force` merged files that WPR produced on the MSI. Preserve the directory if the output is ambiguous.
 
 To include the saved native pair in the Windows acceptance suite, set `$env:STYLUS_BOOT_ACCEPTANCE = '1'` and run `.\.venv\Scripts\python.exe -B -m unittest discover -s tests -p test_offline_trace.py -v`. Set `STYLUS_DISCONNECTED_RUN` and `STYLUS_CONNECTED_RUN` if the completed runs used different IDs.
 
