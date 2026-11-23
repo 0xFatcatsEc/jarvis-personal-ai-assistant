@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param()
+param([switch]$SkipNvidiaQuery)
 
 # Emit only hardware and power characteristics used to interpret M0 timings.
 $ErrorActionPreference = 'Stop'
@@ -16,7 +16,9 @@ $adapters = @(Get-CimInstance Win32_VideoController | ForEach-Object {
 # Win32_VideoController.AdapterRAM is a 32-bit field and can truncate VRAM.
 $nvidia = Get-Command nvidia-smi.exe -ErrorAction SilentlyContinue
 $graphics = @()
-if ($nvidia) {
+if ($SkipNvidiaQuery) {
+    $graphics = $null
+} elseif ($nvidia) {
     $metrics = & $nvidia.Source --query-gpu=name,memory.total,driver_version --format=csv,noheader,nounits
     if ($LASTEXITCODE -ne 0) { throw 'NVIDIA dedicated-memory query failed.' }
     $graphics = @($metrics | ConvertFrom-Csv -Header Name,MiB,Driver | ForEach-Object {

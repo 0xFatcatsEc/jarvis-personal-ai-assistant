@@ -98,8 +98,13 @@ def unload(client: httpx.Client, model: str) -> None:
 
 def environment() -> dict:
     command = ["powershell.exe", "-NoProfile", "-NonInteractive"]
-    hardware = json.loads(subprocess.check_output(
-        [*command, "-File", str(ROOT / "packaging/windows/measure-foundation.ps1")], text=True, timeout=60))
+    inventory = [*command, "-File", str(ROOT / "packaging/windows/measure-foundation.ps1")]
+    try:
+        snapshot = subprocess.check_output(inventory, text=True, timeout=60)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        # Retry without the optional NVIDIA query; all mandatory hardware checks still run.
+        snapshot = subprocess.check_output([*inventory, "-SkipNvidiaQuery"], text=True, timeout=60)
+    hardware = json.loads(snapshot)
     code_count = int(subprocess.check_output(
         [*command, "-Command", "@(Get-Process -Name Code -ErrorAction SilentlyContinue).Count"], text=True, timeout=15))
     if hardware["ac_line"] != "connected" or not code_count or "Thin A15" not in hardware["model"]:
