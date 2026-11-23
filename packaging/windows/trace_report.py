@@ -8,14 +8,18 @@ import ntpath
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
+from statistics import median
 from xml.etree import ElementTree as ET
 
 
 NS = "{http://schemas.microsoft.com/win/2004/08/events/event}"
 PROCESS = "Microsoft-Windows-Kernel-Process"
 NETWORK = "Microsoft-Windows-Kernel-Network"
+TCPIP = "Microsoft-Windows-TCPIP"
 AFD = "Microsoft-Windows-Winsock-AFD"
 DNS = "Microsoft-Windows-DNS-Client"
+TCP_GUID = "{9a280ac0-c8e0-11d1-84e2-00c04fb998a2}"
+UDP_GUID = "{bf3a50c5-a9c9-4988-a005-2df0b7c80f80}"
 
 
 def epoch(value: str) -> float:
@@ -59,6 +63,8 @@ def destination(value: str, dns: bool = False) -> str:
 
 
 def activity(provider, eid, pid, data):
+    if provider == TCPIP and eid in (1018, 1019, 1020, 1021, 1029, 1033, 1034):
+        return int(data["ProcessId"], 0), "transport", destination(data.get("RemoteAddress", ""))
     if provider == DNS and eid in (3006, 3008):
         return pid, "dns", destination(data.get("QueryName", ""), dns=True)
     if provider == NETWORK and eid in (10, 12, 14, 16, 26, 28, 30, 32, 42, 58):
@@ -91,8 +97,75 @@ def records(path: Path):
             correction = start - clock
             yield start, "header", eid, pid, data
         elif correction is not None:
-            yield clock + correction, provider.get("Name", ""), eid, pid, data
+            name = provider.get("Name", "")
+            # WPR's kernel NetworkTrace keyword produces classic TCP/IP and
+            # UDP/IP events. EventID is zero and Opcode identifies the action.
+            guid = element.findtext(".//{*}EventGuid", "").lower()
+            if guid in (TCP_GUID, UDP_GUID):
+                opcode = int(system.findtext(NS + "Opcode"))
+                name, eid = NETWORK, opcode
+                if guid == UDP_GUID and opcode in (10, 26):
+                    eid = opcode + 32
+                elif guid == UDP_GUID:
+                    name = ""  # receive and other non-outbound UDP opcodes
+            yield clock + correction, name, eid, pid, data
         root.clear()
+
+
+def ordered_records(source, arm, boot, stop, issues, calibration):
+    """Order relevant events across CPU buffers, calibrating old appended ETLs."""
+    headers, rows, offsets = [], [], []
+    first = epoch(arm["before"]["utc"])
+    legacy_boot = arm.get("collector") is None and arm["mode"] != "Rehearsal"
+    for ts, provider, eid, pid, data in source:
+        if provider == "header":
+            headers.append((ts, provider, eid, pid, data))
+            continue
+        native = None
+        if provider == PROCESS and eid in (1, 2):
+            field = "CreateTime" if eid == 1 else "ExitTime"
+            if field in data:
+                native = epoch(data[field])
+                if legacy_boot and eid == 1 and boot <= native <= stop:
+                    offsets.append(native - ts)
+            payload = {k: data[k] for k in ("ProcessID", "ParentProcessID", "ImageName") if k in data}
+        elif activity(provider, eid, pid, data) is not None:
+            payload = {k: data[k] for k in ("Address", "daddr", "PID", "EnterExit", "QueryName",
+                                             "ProcessId", "RemoteAddress") if k in data}
+        else:
+            continue
+        rows.append((ts, provider, eid, pid, payload, native))
+
+    shift = median(offsets) if offsets else 0.
+    calibration["legacyPostBootStartAnchors"] = len(offsets)
+    if abs(shift) > 1 and (len(offsets) < 3 or max(offsets) - min(offsets) > 1):
+        issues.append("Inconsistent post-boot process clock anchors")
+        shift = 0.
+    calibration["legacyPostBootShiftSeconds"] = round(shift, 6) if offsets else None
+    timed = []
+    ambiguous = False
+    for ts, provider, eid, pid, data, native in rows:
+        if native is not None:
+            ts = native
+        elif abs(shift) > 1 and boot <= ts + shift <= stop:
+            if first <= ts < boot:
+                ambiguous = True
+                continue
+            ts += shift
+        timed.append((ts, provider, eid, pid, data))
+    if ambiguous:
+        issues.append("Pre-boot and post-boot event clocks overlap")
+    yield from headers
+    yield from sorted(timed, key=lambda record: record[0])
+
+
+def usable_routes(snapshot):
+    if "routeInterfaces" not in snapshot:
+        return snapshot["defaultRoutes"]  # legacy counts cannot exclude stale routes
+    states = snapshot["routeInterfaces"]
+    if len(states) != snapshot["defaultRoutes"] or any(r["state"] not in ("Connected", "Disconnected") for r in states):
+        return None
+    return sum(r["state"] == "Connected" for r in states)
 
 
 def report(directory: Path) -> dict:
@@ -116,10 +189,13 @@ def report(directory: Path) -> dict:
         for snap in (before, after, stopped):
             if snap["bootRecord"] != before["bootRecord"] or snap["bootUtc"] != before["bootUtc"]:
                 issues.append("Boot changed during capture")
-            if mode == "Connected" and not (snap["internet"] and snap["defaultRoutes"]):
+            routes = usable_routes(snap)
+            if mode == "Connected" and not (snap["internet"] and routes):
                 issues.append("Working internet unverified")
-            if mode == "Disconnected" and any(snap[k] for k in ("internet", "physicalLinks", "defaultRoutes", "profiles")):
+            if mode == "Disconnected" and (routes != 0 or any(snap[k] for k in ("internet", "physicalLinks", "profiles"))):
                 issues.append("Disconnected condition unverified")
+                if "routeInterfaces" not in snap and routes:
+                    issues.append("Legacy default routes lack interface state")
         for change in changes:
             if (boot if mode == "Disconnected" else epoch(before["utc"])) <= epoch(change["utc"]) <= end:
                 issues.append("Windows recorded a network profile transition")
@@ -142,13 +218,18 @@ def report(directory: Path) -> dict:
     headers = []
     first_process = None
     latest = 0.
-    for ts, provider, eid, pid, d in records(directory / "events.xml"):
+    calibration = {}
+    observed_providers = Counter()
+    source = records(directory / "events.xml")
+    for ts, provider, eid, pid, d in ordered_records(source, arm, boot, epoch(stopped["utc"]), issues, calibration):
         if provider == "header":
             headers.append(d)
             continue
         latest = max(latest, ts)
         if ts < since or ts > end:
             continue
+        if ts >= start:
+            observed_providers[provider] += 1
         if provider == PROCESS and eid in (1, 2):
             proc = int(d["ProcessID"])
             if eid == 2:
@@ -187,24 +268,44 @@ def report(directory: Path) -> dict:
             identity = (False, "System")
         bucket = "unattributed" if identity is None else "assistant" if identity[0] else "background"
         counts[bucket][kind + "." + dest] += 1
-        if kind == "dns" and owner == workload["dnsControl"] and d.get("QueryName", "").rstrip(".") == "stylus-control.invalid":
+        if (kind == "dns" and owner == workload["dnsControl"]
+                and d.get("QueryName", "").rstrip(".") == workload.get("dnsName", "stylus-control.invalid")):
             controls.add("dns")
+        if (provider == AFD and eid in (21, 22, 1007, 1013) and owner == workload.get("observer")
+                and dest == "loopback" and d.get("Address", "").endswith(":" + str(workload["udpPort"]))):
+            controls.add("udp")
         if bucket == "assistant":
             if dest == "loopback" and owner == workload["desktop"]:
                 if kind == "socket" and d.get("Address", "").endswith(":" + str(workload["port"])):
                     controls.add("socket")
-                if kind == "transport":
+                if kind == "transport" and (provider != TCPIP or (eid == 1033 and
+                        d.get("RemoteAddress", "").endswith(":" + str(workload["port"])))):
                     controls.add("transport")
             if dest != "loopback" and len(samples) < 50:
                 samples.append({"pid": owner, "image": identity[1], "event": eid, "kind": kind, "destination": dest})
 
     if not headers or any(int(h["EventsLost"]) or int(h["BuffersLost"]) for h in headers):
         issues.append("Missing ETW header or lost events/buffers")
-    if any(h["SessionNameString"] != "NetTrace-StylusTrace-" + arm["run"] for h in headers):
+    source_events_lost = {}
+    if arm.get("collector") == "wpr-boot-v1":
+        if not headers or any(h["SessionNameString"] != "Relogger" for h in headers):
+            issues.append("Expected a merged WPR recording")
+        loss_file = directory / "source-loss.json"
+        sessions = read(directory, loss_file.name)["sessions"] if loss_file.exists() else []
+        source_events_lost = {s["Name"]: s.get("EventsLost") for s in sessions}
+        prefix = "wpr_initiated_stylustrace-" + arm["run"].lower() + "_"
+        named = {s["Name"].lower() for s in sessions if s["Name"].lower().startswith(prefix)}
+        if (not any(n.endswith("_stylusevents") for n in named)
+                or not any(n.endswith("_wpr system collector") for n in named)
+                or any(s.get("EventsLost") is None or int(s["EventsLost"]) != 0 for s in sessions)):
+            issues.append("Original WPR session loss counters missing or nonzero")
+    elif any(h["SessionNameString"] != "NetTrace-StylusTrace-" + arm["run"] for h in headers):
         issues.append("Unexpected ETW session")
     if latest < end or (mode != "Rehearsal" and (first_process is None or first_process > boot + 120)):
         issues.append("Capture does not span boot/workload")
     required = {"desktop", "launcher", "ollama.exe", "llama-server.exe", "socket", "transport", "dns"}
+    if arm.get("collector") == "wpr-boot-v1":
+        required.add("udp")
     if required - controls:
         issues.append("Missing positive controls: " + ", ".join(sorted(required - controls)))
     if any(v for k, v in counts["unattributed"].items() if not k.endswith(".loopback")):
@@ -217,8 +318,11 @@ def report(directory: Path) -> dict:
                 bootType=before["bootType"], start=workload["start"], end=workload["end"],
                 internet=before["internet"], status=status, issues=sorted(set(issues)),
                 observedAssistantExternalEvents=external, counts=counts, controls=sorted(controls),
+                workloadProviderEvents=observed_providers,
+                clockCalibration=calibration, zeroExternalVerified=None if status == "inconclusive" else status == "pass",
                 processes=images, findings=samples, eventsLost=[int(h["EventsLost"]) for h in headers],
-                buffersLost=[int(h["BuffersLost"]) for h in headers], etlSha256=sha(directory / "traffic.etl"))
+                buffersLost=[int(h["BuffersLost"]) for h in headers], sourceEventsLost=source_events_lost,
+                etlSha256=sha(directory / "traffic.etl"))
 
 
 def pair(left: dict, right: dict) -> bool:

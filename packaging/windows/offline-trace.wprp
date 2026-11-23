@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WindowsPerformanceRecorder Version="1.0">
+  <Profiles>
+    <SystemCollector Id="Kernel" Name="StylusKernel">
+      <BufferSize Value="256"/><Buffers Value="64"/>
+    </SystemCollector>
+    <EventCollector Id="Events" Name="StylusEvents">
+      <BufferSize Value="256"/><Buffers Value="64"/>
+    </EventCollector>
+    <SystemProvider Id="Packets">
+      <Keywords><Keyword Value="NetworkTrace"/></Keywords>
+    </SystemProvider>
+    <EventProvider Id="Process" Name="22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716" Level="5" NonPagedMemory="true">
+      <Keywords><Keyword Value="0x10"/></Keywords>
+    </EventProvider>
+    <EventProvider Id="Socket" Name="e53c6823-7bb8-44bb-90dc-3f86090d48a6" Level="5" NonPagedMemory="true"/>
+    <EventProvider Id="Dns" Name="1c95126e-7eea-49a9-a3fe-a378b03ddb4d" Level="5"/>
+    <EventProvider Id="Transport" Name="7dd42a49-5329-4832-8dfd-43d979153a88" Level="5" NonPagedMemory="true">
+      <Keywords><Keyword Value="0x30"/></Keywords>
+    </EventProvider>
+    <EventProvider Id="Tcpip" Name="2f07e2ee-15db-40f1-90ef-9d7ba282188a" Level="5" NonPagedMemory="true">
+      <Keywords><Keyword Value="0x400000000"/></Keywords>
+    </EventProvider>
+    <Profile Id="StylusOffline.Verbose.File" Name="StylusOffline" Description="Offline acceptance" DetailLevel="Verbose" LoggingMode="File">
+      <Collectors>
+        <SystemCollectorId Value="Kernel"><SystemProviderId Value="Packets"/></SystemCollectorId>
+        <EventCollectorId Value="Events"><EventProviders>
+          <EventProviderId Value="Process"/><EventProviderId Value="Socket"/><EventProviderId Value="Dns"/><EventProviderId Value="Transport"/><EventProviderId Value="Tcpip"/>
+        </EventProviders></EventCollectorId>
+      </Collectors>
+    </Profile>
+  </Profiles>
+</WindowsPerformanceRecorder>

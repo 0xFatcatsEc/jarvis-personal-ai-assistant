@@ -46,7 +46,7 @@ class TraceTests(unittest.TestCase):
             (206, trace.AFD, 1021, 20, {"Address": "127.0.0.1:4567", "EnterExit": "0"}),
             (207, trace.NETWORK, 10, 4, {"PID": "20", "daddr": "::1"}),
             (208, trace.DNS, 3006, 30, {"QueryName": "stylus-control.invalid"}),
-            (241, "clock", 0, 4, {}),
+            (241, trace.PROCESS, 2, 4, {"ProcessID": 40}),
         ]
 
     def process(self, ts, pid, parent, image):
@@ -54,7 +54,7 @@ class TraceTests(unittest.TestCase):
 
     def score(self):
         with (patch.object(trace, "read", side_effect=lambda _, name: self.docs[name]),
-              patch.object(trace, "records", return_value=iter(sorted(self.events, key=lambda e: e[0]))),
+              patch.object(trace, "records", return_value=iter(self.events)),
               patch.object(trace, "native_root", return_value=r"\Device\Volume1\profile\runtime")):
             return trace.report(self.directory)
 
@@ -104,6 +104,60 @@ class TraceTests(unittest.TestCase):
         self.assertEqual(trace.destination("10.0.0.1:80"), "external")
         self.assertEqual(trace.destination("garbled"), "unknown")
 
+    def test_cross_boot_qpc_reset_and_unordered_buffers(self):
+        for index, (ts, provider, eid, pid, data) in enumerate(self.events):
+            if provider == "header":
+                continue
+            fields = dict(data)
+            if provider == trace.PROCESS:
+                fields["CreateTime" if eid == 1 else "ExitTime"] = utc(ts)
+            self.events[index] = (ts - 238212, provider, eid, pid, fields)
+        # The historical PID and the pre-boot transport must stay outside the
+        # measured interval. Native timestamps independently anchor the restart.
+        self.events.append((91, trace.NETWORK, 10, 4, {"PID": "20", "daddr": "192.0.2.1"}))
+        self.events.reverse()
+        self.assertEqual(self.score()["status"], "pass")
+        self.events = [e for e in self.events if e[1] != trace.NETWORK or e[0] == 91]
+        result = self.score()
+        self.assertIn("Missing positive controls: transport", result["issues"])
+        self.assertFalse(result["observedAssistantExternalEvents"])
+
+    def test_disconnected_route_requires_observed_interface_state(self):
+        def snapshot(state):
+            return {"defaultRoutes": 1, "routeInterfaces": [{"state": state}]}
+        self.assertEqual(trace.usable_routes(snapshot("Disconnected")), 0)
+        self.assertEqual(trace.usable_routes(snapshot("Connected")), 1)
+        self.assertIsNone(trace.usable_routes(snapshot("Unknown")))
+        self.assertIsNone(trace.usable_routes({"defaultRoutes": 2, "routeInterfaces": []}))
+        self.assertEqual(trace.usable_routes({"defaultRoutes": 1}), 1)
+
+    def test_independent_transport_witness_uses_outbound_driver_pid_and_model_port(self):
+        data = {"ProcessId": "0x14", "RemoteAddress": "127.0.0.1:4567"}
+        self.events = [e for e in self.events if e[1] != trace.NETWORK]
+        self.events.append((207, trace.TCPIP, 1017, 4, data))  # inbound accept
+        self.assertNotIn("transport", self.score()["controls"])
+        self.events.append((208, trace.TCPIP, 1033, 4, {**data, "RemoteAddress": "127.0.0.1:777"}))
+        self.assertNotIn("transport", self.score()["controls"])
+        self.events.append((209, trace.TCPIP, 1033, 4, data))
+        self.assertEqual(self.score()["status"], "pass")
+        self.events.append((210, trace.TCPIP, 1034, 4, {**data, "RemoteAddress": "[2001:db8::1]:443"}))
+        self.assertEqual(self.score()["status"], "fail")
+
+    def test_merged_capture_requires_udp_binding_and_original_loss_counters(self):
+        self.docs["arm.json"]["collector"] = "wpr-boot-v1"
+        self.header["SessionNameString"] = "Relogger"
+        self.docs["workload.json"].update(observer=30, udpPort=7000)
+        self.assertIn("Missing positive controls: udp", self.score()["issues"])
+        self.events.append((209, trace.AFD, 1007, 30, {"Address": "127.0.0.1:7000", "EnterExit": "0"}))
+        self.assertEqual(self.score()["status"], "inconclusive")
+        (self.directory / "source-loss.json").touch()
+        sessions = [{"Name": "WPR_initiated_StylusTrace-fixture_boottr_" + label, "EventsLost": 0}
+                    for label in ("StylusEvents", "WPR System Collector")]
+        self.docs["source-loss.json"] = {"sessions": sessions}
+        self.assertEqual(self.score()["status"], "pass")
+        sessions[0]["EventsLost"] = 1
+        self.assertEqual(self.score()["status"], "inconclusive")
+
     def test_tracerpt_clock_uses_native_header_and_payload_pid(self):
         # This Windows build renders +07:59 for an actual +08:00 offset.
         path = self.directory / "events.xml"
@@ -128,7 +182,7 @@ class TraceTests(unittest.TestCase):
 class RecordedWindowsPair(unittest.TestCase):
     def test_offline_stack_across_distinct_cold_boots(self):
         root = Path(os.environ["LOCALAPPDATA"]) / "StylusJarvis/traces"
-        directories = [root / os.environ.get("STYLUS_DISCONNECTED_RUN", "cold-disconnected-01"),
+        directories = [root / os.environ.get("STYLUS_DISCONNECTED_RUN", "cold-disconnected-02"),
                        root / os.environ.get("STYLUS_CONNECTED_RUN", "cold-connected-01")]
         self.assertEqual(*(trace.read(folder, "arm.json")["machine"] for folder in directories))
         results = []

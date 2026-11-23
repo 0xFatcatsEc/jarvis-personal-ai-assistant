@@ -28,6 +28,14 @@ function Snapshot {
     $net = @(Get-NetConnectionProfile)
     $adapters = @(Get-NetAdapter -IncludeHidden | Where-Object { $_.Status -eq 'Up' -and $_.HardwareInterface })
     $routes = @(Get-NetRoute | Where-Object DestinationPrefix -in @('0.0.0.0/0','::/0'))
+    $interfaces = @(Get-NetIPInterface)
+    $routeStates = @(foreach ($route in $routes) {
+        $match = @($interfaces | Where-Object {
+            $_.InterfaceIndex -eq $route.InterfaceIndex -and $_.AddressFamily -eq $route.AddressFamily
+        })
+        $state = if ($match.Count -eq 1) { [string]$match[0].ConnectionState } else { 'Unknown' }
+        @{index=$route.InterfaceIndex; family=[string]$route.AddressFamily; state=$state}
+    })
     return [ordered]@{
         utc = [DateTime]::UtcNow.ToString('o')
         bootUtc = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToUniversalTime().ToString('o')
@@ -37,6 +45,7 @@ function Snapshot {
         internet = [bool]@($net | Where-Object { $_.IPv4Connectivity -eq 'Internet' -or $_.IPv6Connectivity -eq 'Internet' }).Count
         physicalLinks = $adapters.Count
         defaultRoutes = $routes.Count
+        routeInterfaces = $routeStates
         profiles = $net.Count
     }
 }
@@ -45,10 +54,29 @@ if ($Action -eq 'Arm') {
     $null = New-Item -ItemType Directory -Path $dir -Force
     $snapshot = Snapshot
     $runtime = (Get-Item -LiteralPath (Join-Path $profileRoot 'runtime')).FullName
-    Save-Json ([ordered]@{mode=$Mode; run=$RunId; machine=$env:COMPUTERNAME; before=$snapshot; runtime=$runtime}) 'arm.json'
-    $persistent = if ($Mode -eq 'Rehearsal') { 'no' } else { 'yes' }
-    & netsh.exe trace start "sessionname=$name" "persistent=$persistent" "tracefile=$etl" filemode=append maxsize=512 capture=no report=disabled perfmerge=no correlation=disabled overwrite=no provider=Microsoft-Windows-Kernel-Process keywords=0x10 provider=Microsoft-Windows-Kernel-Network provider=Microsoft-Windows-Winsock-AFD provider=Microsoft-Windows-DNS-Client
+    Save-Json ([ordered]@{mode=$Mode; run=$RunId; machine=$env:COMPUTERNAME; before=$snapshot; runtime=$runtime; collector='wpr-boot-v1'}) 'arm.json'
+    $start = if ($Mode -eq 'Rehearsal') { '-start' } else { '-addboot' }
+    $profile = (Join-Path $PSScriptRoot 'offline-trace.wprp') + '!StylusOffline'
+    & wpr.exe $start $profile -filemode -recordtempto $dir -instancename $name
     if ($LASTEXITCODE) { throw 'Could not arm the ETW session.' }
+    if ($Mode -ne 'Rehearsal') {
+        try {
+            $key = 'HKLM:\SYSTEM\CurrentControlSet\Control\WMI\Autologger'
+            $sources = @(Get-ChildItem -LiteralPath $key | Where-Object PSChildName -like ('WPR_initiated_' + $name + '_boottr_*') |
+                ForEach-Object {
+                    $config = Get-ItemProperty -LiteralPath $_.PSPath
+                    if ($config.Start -ne 1 -or (Split-Path -Parent $config.FileName) -ne $dir) {
+                        throw 'Boot logger is disabled or points outside the run directory.'
+                    }
+                    @{name=$_.PSChildName; file=$config.FileName}
+                })
+            if ($sources.Count -lt 2) { throw 'Boot logger registrations are incomplete.' }
+            Save-Json $sources 'boot-sources.json'
+        } catch {
+            & wpr.exe -cancelboot -instancename $name
+            throw
+        }
+    }
     return
 }
 $arm = Get-Content -LiteralPath (Join-Path $dir 'arm.json') -Raw | ConvertFrom-Json
@@ -57,7 +85,28 @@ if ($Action -eq 'Run') {
     if (Test-Path -LiteralPath (Join-Path $dir 'workload.json')) { throw 'This run already has a workload journal.' }
     # Creation time prevents a snapshot from assigning earlier events to a recycled PID.
     Save-Processes 'processes.json'
-    Save-Json (Snapshot) 'before-workload.json'
+    $before = Snapshot
+    Save-Json $before 'before-workload.json'
+    if ($Mode -ne 'Rehearsal') {
+        if ($before.bootType -ne 0 -or $before.bootRecord -eq $arm.before.bootRecord) {
+            throw 'Run requires a fresh full boot after Arm.'
+        }
+        if ($Mode -eq 'Disconnected' -and ($before.internet -or $before.profiles -or $before.physicalLinks -or
+            @($before.routeInterfaces | Where-Object state -ne 'Disconnected').Count)) {
+            throw 'A network path is active or unknown. Inspect before-workload.json before proceeding.'
+        }
+        if ($Mode -eq 'Connected' -and (-not $before.internet -or
+            -not @($before.routeInterfaces | Where-Object state -eq 'Connected').Count)) {
+            throw 'Windows has not confirmed internet connectivity on a connected route.'
+        }
+        if ($arm.collector -eq 'wpr-boot-v1') {
+            foreach ($source in (Get-Content -LiteralPath (Join-Path $dir 'boot-sources.json') -Raw | ConvertFrom-Json)) {
+                if (-not (Test-Path -LiteralPath $source.file -PathType Leaf)) {
+                    throw "Boot capture file missing for $($source.name). Stop and inspect this run."
+                }
+            }
+        }
+    }
     $env:PYTHONPATH = (Join-Path $repo 'src') + ';' + (Join-Path $repo '.venv\Lib\site-packages')
     & (Join-Path $repo '.venv\Scripts\python.exe') -B (Join-Path $PSScriptRoot 'trace_workload.py') $dir
     $result = $LASTEXITCODE
@@ -66,7 +115,22 @@ if ($Action -eq 'Run') {
     return
 }
 if (-not (Test-Path -LiteralPath (Join-Path $dir 'stopped.json'))) {
-    & netsh.exe trace stop "sessionname=$name"
+    if ($arm.collector -eq 'wpr-boot-v1') {
+        if ($Action -eq 'Stop' -and $Mode -ne 'Rehearsal' -and (Snapshot).bootRecord -eq $arm.before.bootRecord) {
+            & wpr.exe -cancelboot -instancename $name
+            if ($LASTEXITCODE) { throw 'Unable to cancel the named boot recording.' }
+            Save-Json (Snapshot) 'stopped.json'
+            return
+        }
+        # Read source counters before WPR merges the sessions into one ETL.
+        $losses = @(Get-CimInstance Win32_PerfRawData_Counters_EventTracingforWindowsSession -ErrorAction SilentlyContinue |
+            Where-Object Name -like ('WPR_initiated_' + $name + '_*') | Select-Object Name, EventsLost)
+        Save-Json @{sessions=$losses} 'source-loss.json'
+        $stop = if ($Mode -eq 'Rehearsal') { '-stop' } else { '-stopboot' }
+        & wpr.exe $stop $etl -skipPdbGen -instancename $name
+    } else {
+        & netsh.exe trace stop "sessionname=$name"
+    }
     if ($LASTEXITCODE) { throw 'Unable to stop the named session.' }
     Save-Json (Snapshot) 'stopped.json'
 }

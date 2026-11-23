@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from uuid import uuid4
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -64,11 +65,18 @@ def workload(directory: Path) -> None:
         reservation.bind(("127.0.0.1", 0))
         port = reservation.getsockname()[1]
     started = now()
-    # An observer-only resolution of localhost exercises DNS event collection.
-    # Use Windows' DNS API explicitly so Winsock cannot short-circuit numerically.
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as receiver, socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sender:
+        receiver.bind(("127.0.0.1", 0))
+        receiver.settimeout(2)
+        udp_port = receiver.getsockname()[1]
+        sender.sendto(b"trace", receiver.getsockname())
+        if receiver.recv(16) != b"trace":
+            raise RuntimeError("UDP observer control failed")
+    # Bind a merged ETL to this specific workload with a cache-only DNS call.
+    control_name = f"stylus-{uuid4().hex}.invalid"
     with subprocess.Popen([str(system / "WindowsPowerShell/v1.0/powershell.exe"), "-NoProfile",
                            "-NonInteractive", "-Command",
-                           "Resolve-DnsName stylus-control.invalid -Type A -DnsOnly -CacheOnly -ErrorAction SilentlyContinue"],
+                           f"Resolve-DnsName {control_name} -Type A -DnsOnly -CacheOnly -ErrorAction SilentlyContinue"],
                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) as dns:
         dns.wait(timeout=20)
     with tempfile.TemporaryFile() as log:
@@ -100,7 +108,8 @@ def workload(directory: Path) -> None:
                                check=True, capture_output=True, timeout=20)
             launcher.wait(timeout=10)
     record.write_text(json.dumps(dict(completed=True, offline=True, start=started, end=now(), port=port,
-                                      launcher=launcher.pid, desktop=client.pid, dnsControl=dns.pid),
+                                      launcher=launcher.pid, desktop=client.pid, dnsControl=dns.pid,
+                                      dnsName=control_name, observer=os.getpid(), udpPort=udp_port),
                                  indent=2), encoding="utf-8")
 
 
