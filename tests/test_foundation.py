@@ -1,10 +1,12 @@
 import asyncio
+import hashlib
 import json
 import os
 import sqlite3
 import tempfile
 import unittest
 from collections.abc import AsyncIterator
+from importlib.resources import files
 from pathlib import Path
 from uuid import uuid4
 
@@ -126,12 +128,40 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
     async def test_newer_schema_fails_closed(self) -> None:
         await self.db.close()
         with sqlite3.connect(self.db.path) as conn:
-            conn.execute("INSERT INTO migrations VALUES(2,'new-release')")
+            conn.execute("INSERT INTO migrations SELECT MAX(version)+1,'new-release' FROM migrations")
         conn.close()
         self.db = Database(self.db.path)
         with self.assertRaises(Failure) as caught:
             await self.db.open()
         self.assertEqual(caught.exception.code, Code.SCHEMA)
+
+    async def test_grant_migration_preserves_v1_turns(self) -> None:
+        path = self.root / "legacy.sqlite3"
+        initial = files("stylus_jarvis.storage").joinpath("migrations/0001_initial.sql").read_bytes()
+        with sqlite3.connect(path) as connection:
+            connection.executescript(initial.decode("utf-8"))
+            connection.execute("INSERT INTO migrations VALUES(1,?)", (hashlib.sha256(initial).hexdigest(),))
+            connection.execute("INSERT INTO projects(id,owner,root,identity) VALUES('p','owner',?,?)",
+                               (str(self.root), str(self.root)))
+            connection.execute("INSERT INTO conversations(id,project,title) VALUES('c','p','old thread')")
+            connection.execute("INSERT INTO turns(id,conversation,submission,digest,state) "
+                               "VALUES('t','c','r','d','active')")
+            connection.executemany("INSERT INTO messages VALUES(?,?,?,?,?,?)", [
+                ("u", "c", "t", 1, "user", "old question"), ("a", "c", "t", 2, "assistant", "checkpoint"),
+            ])
+        connection.close()
+        upgraded = Database(path)
+        await upgraded.open()
+        try:
+            store = Repositories(upgraded)
+            scope = await store.select("owner", "p", 1, "c")
+            self.assertEqual((await store.history(scope))[-1][2:], ("checkpoint", "interrupted"))
+            receipt = await store.finish(scope, "t", State.COMPLETED, "overwrite", None)
+            self.assertEqual((receipt.state, receipt.answer), (State.INTERRUPTED, "checkpoint"))
+            self.assertIsNone(await upgraded.call(lambda c: c.execute(
+                "SELECT grant_revision FROM turns WHERE id='t'").fetchone()[0]))
+        finally:
+            await upgraded.close()
 
     async def test_settings_validation_and_round_trip(self) -> None:
         with self.assertRaises(ValidationError):

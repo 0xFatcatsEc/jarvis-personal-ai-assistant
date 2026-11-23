@@ -14,8 +14,8 @@ The original Project Plan supplies the historical goals. The V2 Architecture Rev
 | 1.1.1.2 Freeze fixtures | Missing | No versioned set of 20 reference questions, two projects, conflicting evidence and expected abstentions. |
 | 1.1.2.1 Provision assets | Partial | Qwen tag and full digest are packaged. No verified Windows installer, Whisper weights, Piper model/config/card or offline asset inventory. |
 | 1.1.2.2 Compare Qwen builds | Missing at initial audit; now complete | See the [measured report and model decision](../outputs/qwen-msi-02/decision.md). |
-| 1.2.1.1 Project picker | Partial | Local roots, canonical identity, per-owner listing, project/thread selectors work. Test similarly named roots and alias collisions on Windows. |
-| 1.2.1.2 Bind request scope | Partial | Owner, project, conversation, grant and generation captured. Repository queries are scoped; switch during streaming is tested. Live revocation and settlement need work. |
+| 1.2.1.1 Project picker | Partial at initial audit; now complete | Windows tests verified distinct IDs for identically named roots, persistence after reopening SQLite, keyboard selection and alias resolution. See [project picker verification](#project-picker-verification). |
+| 1.2.1.2 Bind requests to grants | Complete | Windows acceptance tests cover dispatch, revocation during generation, status-only settlement and delivery of receipts and history. See [request grant verification](#request-grant-verification). |
 | 1.2.2.1 Create local store | Partial | WAL, FK enforcement, schema ledger and atomic operations tested. Validate the actual DB location after reparse resolution; exercise upgrade, rollback and FTS5 capability on shipped binaries. |
 | 1.2.2.2 Stream and reopen history | Partial | Offscreen desktop test streams, saves and reopens with model offline. Tests verify ordered checkpoints, cancellation, deduplication and interrupted reconciliation. Retry and shutdown gaps below. |
 | 1.3.1.1 Guard stack traffic | Partial | Application transport pins numeric loopback, disables proxies and redirects, exposes no cloud route. External Ollama runtime and updater remain independently configured. |
@@ -37,7 +37,7 @@ Paths are relative to `src/stylus_jarvis/` unless marked as repository files.
 | `settings.py`, `release-manifest.toml` | Immutable Pydantic preferences, atomic replace, release facts and loopback validation | Defaults and validation tested. Profile selection, repair UI and expanded manifest are pending. |
 | `runtime/diagnostics.py` | Typed events, bounded queue, rotating JSONL and memory health state | Functional infrastructure; UI does not expose log failures. |
 | `storage/database.py`, `storage/migrations/0001_initial.sql` | Thread-owned SQLite, migration checksum ledger, pre-upgrade snapshot, integrity checks, orphan reconciliation | Single executor serializes reads as well as writes. Measure latency before separating readers. |
-| `storage/repositories.py` | Project registration, grant checks, history, idempotent creation, checkpoints and finalization | Core transaction behavior is covered. Missing project-wide search and proper settlement after grant change. |
+| `storage/repositories.py` | Project registration, grant checks, history, idempotent creation, checkpoints and finalization | Revocation-safe settlement verified under 1.2.1.2. Project-wide search remains open. |
 | `runtime/scheduler.py` | One inference reservation, cancellation and idle signaling | Busy rejection and active cancellation tested. Full shutdown duration remains unbounded. |
 | `runtime/coordinator.py` | Request validation, context budget, generation, checkpoints, terminal receipt and unsaved retry | Primary lifecycle works. Duplicate retry still depends on live inference. |
 | `inference/ollama.py` | Bounded local HTTP, verified model inventory, NDJSON parser and stream cleanup | Mock and loopback tests pass. Real runtime performance and update behavior unverified. |
@@ -53,7 +53,7 @@ Paths are relative to `src/stylus_jarvis/` unless marked as repository files.
 Priority reflects impact within Foundation. These are code-inspection findings unless identified by the test descriptions above.
 
 1. **High — unsaved final text can be discarded on close.** The coordinator retains failed finalization in memory. Desktop shutdown can return success while that pending save exists. Keep the window recoverable and offer retry before clean exit. Test a failed final commit followed by Close.
-2. **High — changed grant prevents terminal bookkeeping.** Finalization calls the same live-grant check as content delivery. Revocation during generation can leave a turn active until restart. Permit scoped, status-only internal settlement without disclosing new content. Test revocation between last fragment and commit.
+2. **High — changed grant prevented terminal bookkeeping. Resolved in 1.2.1.2.** Revocation before final commit now settles the original turn in the same process. The final update preserves checkpointed text and withholds the content-bearing receipt.
 3. **High — release-mode offline guarantee is unproven.** Provider loopback checks cover application requests only. Establish a qualified local-only runtime and validate egress from the entire stack.
 4. **Medium — idempotent replay unnecessarily requires Ollama.** Coordinator probes and builds context before looking up a previously committed submission. Resolve scoped prior receipts first. Test replay of an acknowledged submission with the model stopped.
 5. **Medium — shutdown deadline only covers slot waiting.** Desktop subsequently gathers all tasks without a deadline. Report unresolved durability and distinguish forced exit from a clean close.
@@ -66,7 +66,7 @@ Priority reflects impact within Foundation. These are code-inspection findings u
 
 Session ownership lives across bootstrap, repository and coordinator rather than the blueprint’s session service. Prompt assembly spans repository and router. The UI controller has direct access to concrete repositories and model routing. Scope records reside in messages rather than the planned context module. Move boundaries incrementally when addressing the corresponding lifecycle defects. Preserve the tested SQLite and transport contracts. Future-phase modules have no delivery obligation in this increment.
 
-The database actor has one connection and an unbounded executor work queue. Per-frame authorization and full reply-prefix concatenation each add overhead. Profile sustained streams, large history and mixed workloads before changing these paths. The diagnostics schema and failure envelope need contract tests. End-to-end fault coverage still lacks a real process kill, full disk, suspend/resume, failed upgrade, grant revocation and closed-window late callbacks.
+The database actor has one connection and an unbounded executor work queue. Per-frame authorization and full reply-prefix concatenation each add overhead. Profile sustained streams, large history and mixed workloads before changing these paths. The diagnostics schema and failure envelope need contract tests. End-to-end fault coverage still lacks a real process kill, full disk, suspend/resume, failed upgrade and closed-window late callbacks.
 
 ## Next implementation increment
 
@@ -93,4 +93,20 @@ Recheck locally with `python packaging/windows/provision_assets.py verify`. The 
 The [qualification harness and runbook](../benchmarks/README.md) compare digest-pinned 4B and 8B candidates on the same recall and coding cases. A reviewed cold-load CUDA OOM now records a hardware disqualification while preserving the other candidate's complete measurements and all its eligibility gates.
 
 **M0 complete · 23 November 2026.** Both candidates were attempted on the MSI. Select the already-pinned Qwen 3 4B build for the tested local profile. It passed 20/20 recall, zero observed disclosures and 0.584 s warm p95 to first visible content. Its coding score was 4/10. The 8B build exhausted GPU memory before the first trial. No other M0 work remains. Full desktop A6 testing remains at its assigned later gate. [Benchmark report and selection](../outputs/qwen-msi-02/decision.md) · [Scored comparison](../outputs/qwen-msi-02/comparison.json)
+
+## Project picker verification
+
+**1.2.1.1 Create project picker — complete, 23 November 2026.** Two folders named `Shared Project` under different parents received distinct project IDs. After closing and reopening the SQLite database, registering the roots in reverse order returned both original IDs. In the offscreen PySide6 desktop, Shift+Tab reached the picker from Add project. Down and Up selected each canonical path and opened its corresponding saved conversation. The existing picker met the backlog criterion without a production change. [Acceptance tests](../tests/test_project_picker.py)
+
+Registering a case-variant path or a path through a Windows directory junction before its canonical path produced one project entry with the canonical label. The separate directory-symlink test skipped on this account because Windows denied link creation (error 1314). It runs automatically when link creation is available.
+
+The full Windows suite recorded 28 passes and one skip at picker closure. To repeat the picker checks from the repository root, run `.venv\Scripts\python.exe -m unittest discover -s tests -p test_project_picker.py -v`.
+
+## Request grant verification
+
+**1.2.1.2 Bind requests to grants — complete, 23 November 2026.** The coordinator retained the owner, project, conversation, offline mode, grant revision, selection generation and request ID through dispatch and event delivery. Fault injection changed the live SQLite grant during the root check, before the first fragment, between fragments, after the last fragment, and between commit and receipt delivery. The tests also exercised duplicate receipts and save retry after rebinding. [Grant acceptance tests](../tests/test_request_grants.py)
+
+Revoking an active turn blocks subsequent fragments and settles the turn as failed with a scope error and an end time. Only previously checkpointed assistant text remains durable. A later grant cannot finalize an earlier active turn, and the original grant cannot settle a turn admitted under the later revision. If completion committed before revocation, the completed turn remains readable with a fresh grant. The Windows desktop test used the signed-in SID, offscreen Qt, real SQLite and a scripted local stream to verify fragment and history delivery. A separate upgrade test reopened a schema-v1 database and verified that the legacy checkpoint survived. [Desktop acceptance test](../tests/test_desktop.py) · [Upgrade test](../tests/test_foundation.py)
+
+The full Windows suite recorded **40 passes and one skip**. All grant tests passed. The existing project-picker symlink case skipped because this Windows account lacks link-creation privileges. Reproduce with `.venv\Scripts\python.exe -B -m unittest discover -s tests -v`. The next sequential subtask is **1.2.2.1 Create local store**.
 

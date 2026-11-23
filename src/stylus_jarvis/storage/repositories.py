@@ -78,9 +78,12 @@ class Repositories:
         def validate(conn: sqlite3.Connection) -> str:
             _authorize(conn, scope)
             return str(conn.execute("SELECT root FROM projects WHERE id=?", (scope.project,)).fetchone()[0])
-        path = Path(await self.db.call(validate))
-        if require_root and not await asyncio.to_thread(path.is_dir):
-            raise Failure(Code.SCOPE)
+        if require_root:
+            path = Path(await self.db.call(validate))
+            if not await asyncio.to_thread(path.is_dir):
+                raise Failure(Code.SCOPE)
+        # A grant can change while the filesystem check is in flight.
+        await self.db.call(lambda conn: _authorize(conn, scope))
 
     async def begin(self, scope: Scope, request: UUID, text: str, digest: str) -> tuple[Turn, bool]:
         def begin(conn: sqlite3.Connection) -> tuple[Turn, bool]:
@@ -94,8 +97,8 @@ class Repositories:
                 return turn, False
             turn_id = uuid4().hex
             seq = conn.execute("SELECT COALESCE(MAX(seq),0)+1 FROM messages WHERE conversation=?", (cid,)).fetchone()[0]
-            conn.execute("INSERT INTO turns(id,conversation,submission,digest,state) VALUES(?,?,?,?,'active')",
-                         (turn_id, cid, request.hex, digest))
+            conn.execute("INSERT INTO turns(id,conversation,submission,digest,grant_revision,state) "
+                         "VALUES(?,?,?,?,?,'active')", (turn_id, cid, request.hex, digest, scope.grant))
             conn.executemany("INSERT INTO messages VALUES(?,?,?,?,?,?)", [
                 (uuid4().hex, cid, turn_id, seq, "user", text),
                 (uuid4().hex, cid, turn_id, seq+1, "assistant", "")])
@@ -107,8 +110,8 @@ class Repositories:
     async def checkpoint(self, scope: Scope, key: str, ordinal: int, text: str) -> None:
         def update(conn: sqlite3.Connection) -> None:
             _authorize(conn, scope)
-            changed = conn.execute("UPDATE turns SET ordinal=? WHERE id=? AND conversation=? "
-                                   "AND state='active' AND ordinal<?", (ordinal, key, scope.conversation, ordinal))
+            changed = conn.execute("UPDATE turns SET ordinal=? WHERE id=? AND conversation=? AND grant_revision=? "
+                                   "AND state='active' AND ordinal<?", (ordinal, key, scope.conversation, scope.grant, ordinal))
             if changed.rowcount:
                 conn.execute("UPDATE messages SET content=? WHERE turn=? AND role='assistant'", (text, key))
         await self.db.call(update, write=True)
@@ -116,15 +119,34 @@ class Repositories:
     async def finish(self, scope: Scope, key: str, state: State, text: str, error: Code | None) -> Turn:
         if state == State.ACTIVE:
             raise Failure(Code.CONFLICT)
-        def finish(conn: sqlite3.Connection) -> Turn:
-            _authorize(conn, scope)
+        def finish(conn: sqlite3.Connection) -> Turn | None:
+            row = conn.execute(
+                "SELECT p.grant,t.grant_revision,t.state FROM projects p JOIN conversations c ON c.project=p.id "
+                "JOIN turns t ON t.conversation=c.id WHERE p.owner=? AND p.id=? AND c.id=? AND t.id=?",
+                (scope.owner, scope.project, scope.conversation, key)
+            ).fetchone()
+            if row is None or not scope.offline:
+                raise Failure(Code.SCOPE)
+            if row["grant_revision"] is None and row["state"] != State.ACTIVE and row["grant"] == scope.grant:
+                # Historical terminal receipts predate admission revisions.
+                return _turn(conn, scope, key)
+            if row["grant_revision"] != scope.grant:
+                raise Failure(Code.SCOPE)
+            if row["grant"] != scope.grant:
+                conn.execute("UPDATE turns SET state='failed',error=?,ended_at=CURRENT_TIMESTAMP "
+                             "WHERE id=? AND state='active'", (Code.SCOPE.value, key))
+                return None
             changed = conn.execute("UPDATE turns SET state=?,ended_at=CURRENT_TIMESTAMP,error=? "
                                    "WHERE conversation=? AND id=? AND state='active'",
                                    (state.value, error.value if error else None, scope.conversation, key))
             if changed.rowcount:
                 conn.execute("UPDATE messages SET content=? WHERE turn=? AND role='assistant'", (text, key))
             return _turn(conn, scope, key)
-        return await self.db.call(finish, write=True)
+        result = await self.db.call(finish, write=True)
+        if result is None:
+            # Raising inside the actor would roll back the status-only update.
+            raise Failure(Code.SCOPE)
+        return result
 
     async def history(self, scope: Scope, *, after: int = 0, limit: int = 100,
                       query: str = "") -> list[tuple[int, str, str, str]]:

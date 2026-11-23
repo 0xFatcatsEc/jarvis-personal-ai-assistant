@@ -46,12 +46,23 @@ class Coordinator:
     async def retry_save(self) -> Turn:
         item = self.pending
         scope = self.selection
-        if item is None or scope is None or (scope.owner, scope.project, scope.conversation, scope.grant) != (
-            item.scope.owner, item.scope.project, item.scope.conversation, item.scope.grant
+        if item is None or scope is None or not scope.offline or (scope.owner, scope.project, scope.conversation) != (
+            item.scope.owner, item.scope.project, item.scope.conversation
         ):
             raise Failure(Code.SCOPE)
-        result = await self.store.finish(scope, item.key, item.state, item.answer, item.error)
-        self.pending = None
+        if scope.grant != item.scope.grant:
+            await self.store.validate(scope)
+        try:
+            result = await self.store.finish(item.scope, item.key, item.state, item.answer, item.error)
+        except Failure as exc:
+            if exc.code == Code.SCOPE and self.pending is item:
+                self.pending = None
+            raise
+        if self.pending is item:
+            self.pending = None
+        await self.store.validate(item.scope)
+        if scope != self.selection:
+            raise Failure(Code.SCOPE)
         return result
 
     async def submit(self, scope: Scope, request: UUID, prompt: str) -> Turn:
@@ -70,6 +81,9 @@ class Coordinator:
                 raise Failure(Code.SCOPE)
             turn, fresh = await self.store.begin(scope, request, prompt, self.router.digest)
             if not fresh:
+                await self.store.validate(scope)
+                if self.selection != scope:
+                    raise Failure(Code.SCOPE)
                 return turn
             answer = ""
             state = State.COMPLETED
@@ -117,6 +131,7 @@ class Coordinator:
                           digest=self.router.digest)
             if error is not None:
                 raise Failure(error)
+            await self.store.validate(scope)
             self._deliver(scope, request, "saved", result.state.value)
             return result
         finally:

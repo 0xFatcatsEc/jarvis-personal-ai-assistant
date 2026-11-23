@@ -133,6 +133,7 @@ class Desktop:
                 key = threads[0][0]
             scope = await self.store.select(self.owner, project, generation, None if new else key)
             threads = await self.store.conversations(self.owner, project)
+            await self.store.validate(scope)
             if self.generation == generation:
                 self.populate(self.view.threads, threads, scope.conversation)
                 self.core.select(scope)
@@ -155,6 +156,9 @@ class Desktop:
                 cursor = seq
             if len(page) < 100:
                 break
+        await self.store.validate(scope)
+        if scope != self.core.selection or query != self.view.search.text():
+            return
         self.view.history.setPlainText("\n\n".join(lines))
         self.view.history.moveCursor(QTextCursor.MoveOperation.End)
 
@@ -203,6 +207,7 @@ class Desktop:
                 if scope == self.core.selection and self.core.pending is None:
                     await self.history()
                     threads = await self.store.conversations(self.owner, scope.project)
+                    await self.store.validate(scope)
                     if scope == self.core.selection:
                         self.populate(self.view.threads, threads, scope.conversation)
         self.spawn(run)
