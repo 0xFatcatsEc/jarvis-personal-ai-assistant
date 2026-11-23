@@ -19,7 +19,7 @@ The original Project Plan supplies the historical goals. The V2 Architecture Rev
 | 1.2.2.1 Create local store | Complete for M1 | Foreign-key enforcement and live WAL placement verified on Windows. Upgrade, rollback and FTS5 passed on the identified application runtime. Final distribution binary verification belongs to packaging. See [local store verification](#local-store-verification). |
 | 1.2.2.2 Stream and reopen history | Complete for M1 | Windows process-restart and Qt tests cover ordered history, distinct terminal states, final-write recovery, model-independent replay and bounded close attempts. See [history verification](#history-verification). |
 | 1.3.1.1 Guard model and worker traffic | Complete for the provisioned Windows profile | The dedicated desktop and headless Ollama run under effective outbound rules. Windows acceptance covered real Qwen inference, native outbound denial, worker policy, cloud refusal and updater exclusion. See [offline traffic verification](#offline-traffic-verification). |
-| 1.3.1.2 Trace offline modes | Missing | No process-attributed cold-boot trace detached from network and connected with offline mode selected. |
+| 1.3.1.2 Trace offline modes | Partial | An instrumented MSI desktop turn and native trace are recorded. Closure requires passing disconnected and connected cold-boot reports. See [trace evidence](#cold-boot-trace-evidence). |
 | 1.3.2.1 Pin and reinstall | Partial | Python lock, project entry point, SQL package data and model digest present. No offline wheelhouse/installer, complete release manifest, clean-profile rollback rehearsal or sample upgrade proof. |
 | 1.3.2.2 Bounded diagnostics | Partial | Rotating local allowlisted events, bounded queue and dropped-event counter present. No owner-visible degraded sink, writer timings, build field or saturation/rotation evidence. |
 
@@ -149,4 +149,12 @@ The full Windows suite recorded **59 passes and one skip** at Feature 1.2 closur
 The full Windows suite recorded **68 passes and one skip**. All nine offline acceptance tests ran, including the opt-in live model and firewall test. The existing directory-symlink test skipped because Windows denied link creation.
 
 **1.3.1.2 Trace offline modes is next.** The release gate still needs process-attributed observations across a disconnected cold boot and a connected cold boot with offline mode selected. Independently running Windows services and the user's separate Ollama installation must be distinguished in that trace. [Windows acceptance tests](../tests/test_offline_policy.py) · [Launch, repeat acceptance and remove rules](windows-offline-profile.md)
+
+## Cold-boot trace evidence
+
+**1.3.1.2 remains open.** On 23 November 2026, a connected MSI rehearsal exercised a real completed Qt/Qwen turn with offline mode enabled. Kernel-Boot reported type 2. During the measured turn, ETW attributed 27 socket events, 256 transport events and four local name-resolution events to the assistant stack. All were loopback. The ETL header reported zero lost events and zero lost buffers. The reserved-name observer control was visible separately. Some background traffic lacked process identity in this first capture. The report preserves that uncertainty. [Measured rehearsal](evidence/1.3.1.2/rehearsal.json)
+
+The collector now takes a process snapshot before each workload in addition to recording process lifetimes. A release verdict requires two distinct full boots, correct network conditions and complete attribution of external activity. The synthetic classifier tests cover PID reuse, unrelated Ollama processes, blocked attempts, DNS, loss, missing activity, network changes and duplicate boots. [Windows capture procedure](windows-cold-boot-trace.md) · [Acceptance tests](../tests/test_offline_trace.py)
+
+The disconnected run was armed and Windows confirmed the named session was running. At handoff, `cold-disconnected-01` contained the arm journal and ETL only. The connected run had yet to start. Five classifier tests passed. The native paired acceptance test awaits both completed captures.
 

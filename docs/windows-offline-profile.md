@@ -49,6 +49,8 @@ The foreground launcher supplies a fresh environment, pins the model store and s
 
 ## Repeat Windows acceptance
 
+For backlog 1.3.1.2 use the separate two-boot procedure. Its workload measures ordinary assistant behavior. The firewall denial test below intentionally attempts an external connection and must run outside the traffic capture. [Two-boot trace procedure](windows-cold-boot-trace.md)
+
 Run in normal PowerShell from the repository root. The live test launches its own private server on a free loopback port, makes a synthetic Qwen request and stops the test process tree. It also requires Windows to return Winsock error 10013 on an outbound TCP connection to the documentation address `192.0.2.1`. A timeout or unreachable network fails that assertion.
 
 ```powershell
