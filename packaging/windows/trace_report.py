@@ -82,19 +82,22 @@ def records(path: Path):
     iterator = ET.iterparse(path, events=("start", "end"))
     _, root = next(iterator)
     correction = None
+    header_offset = None
     for action, element in iterator:
         if action != "end" or element.tag != NS + "Event":
             continue
         system = element.find(NS + "System")
         provider = system.find(NS + "Provider").attrib
         eid = int(system.findtext(NS + "EventID"))
-        clock = epoch(system.find(NS + "TimeCreated").get("SystemTime"))
+        displayed = datetime.fromisoformat(system.find(NS + "TimeCreated").get("SystemTime"))
+        clock = displayed.timestamp()
         pid = int(system.find(NS + "Execution").get("ProcessID"))
         data = {v.get("Name"): (v.text or "").strip() for v in element.findall(NS + "EventData/" + NS + "Data")}
         if provider.get("Guid", "").lower() == "{9e814aad-3204-11d2-9a82-006008a86939}" and "StartTime" in data:
             # tracerpt can round its displayed UTC offset down by one minute.
             start = int(data["StartTime"]) / 10**7 - 11644473600
             correction = start - clock
+            header_offset = displayed.utcoffset()
             yield start, "header", eid, pid, data
         elif correction is not None:
             name = provider.get("Name", "")
@@ -108,7 +111,16 @@ def records(path: Path):
                     eid = opcode + 32
                 elif guid == UDP_GUID:
                     name = ""  # receive and other non-outbound UDP opcodes
-            yield clock + correction, name, eid, pid, data
+            adjustment = correction
+            # A single dump can alternate between the correct UTC offset and
+            # one minute below it. Keep native-header calibration per record.
+            offset = displayed.utcoffset()
+            if header_offset is not None and offset is not None:
+                delta = (offset - header_offset).total_seconds()
+                if ((abs(correction + 60) < 0.001 and delta == 60)
+                        or (abs(correction) < 0.001 and delta == -60)):
+                    adjustment += delta
+            yield clock + adjustment, name, eid, pid, data
         root.clear()
 
 

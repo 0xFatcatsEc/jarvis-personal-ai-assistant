@@ -177,6 +177,11 @@ class TraceTests(unittest.TestCase):
         _, (ts, *row) = list(trace.records(path))
         self.assertEqual(ts, 15.)
         self.assertEqual(trace.activity(*row), (20, "transport", "loopback"))
+        for header_offset in ("+07:59", "+08:00"):
+            with self.subTest(header_offset=header_offset):
+                xml = header.replace("+07:59", header_offset) + net + net.replace("+07:59", "+08:00")
+                path.write_text("<Events>" + xml + "</Events>", encoding="utf-8")
+                self.assertEqual([ts for ts, *_ in trace.records(path)], [0., 15., 15.])
 
 
 @unittest.skipUnless(os.name == "nt", "requires Windows PowerShell")
