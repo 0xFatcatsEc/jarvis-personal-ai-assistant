@@ -10,7 +10,8 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from uuid import UUID
 
-from ..contracts.messages import Code
+from ..contracts.messages import Code, Failure
+from ..settings import local_data_path
 
 
 class Event(StrEnum):
@@ -54,15 +55,16 @@ class Diagnostics:
     def _write(self, directory: Path) -> None:
         sink = None
         try:
-            directory.mkdir(parents=True, exist_ok=True)
-            sink = Sink(directory / "runtime.jsonl", maxBytes=2*1024*1024, backupCount=2, encoding="utf-8")
+            destination = local_data_path(directory / "runtime.jsonl")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            sink = Sink(destination, maxBytes=2*1024*1024, backupCount=2, encoding="utf-8")
             while not self._stop.is_set() or not self._items.empty():
                 try:
                     line = self._items.get(timeout=0.1)
                 except queue.Empty:
                     continue
                 sink.emit(logging.LogRecord("stylus", logging.INFO, "", 0, line, (), None))
-        except OSError:
+        except (Failure, OSError):
             self.degraded = True
         finally:
             if sink:

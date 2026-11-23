@@ -6,6 +6,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from ..contracts.messages import ChatMessage, Code, Failure, PendingSave, Scope, State, Turn
+from ..settings import check_local_route
 from .database import Database
 from . import recovery
 
@@ -49,6 +50,7 @@ class Repositories:
     async def register(self, owner: str, root: Path) -> str:
         def resolve() -> Path:
             try:
+                check_local_route(root)
                 path = root.resolve(strict=True)
                 if not path.is_dir() or str(path).startswith("\\\\"):
                     raise Failure(Code.SCOPE)
@@ -92,8 +94,11 @@ class Repositories:
             return str(conn.execute("SELECT root FROM projects WHERE id=?", (scope.project,)).fetchone()[0])
         if require_root:
             path = Path(await self.db.call(validate))
-            if not await asyncio.to_thread(path.is_dir):
-                raise Failure(Code.SCOPE)
+            def check_root() -> None:
+                check_local_route(path)
+                if not path.is_dir():
+                    raise Failure(Code.SCOPE)
+            await asyncio.to_thread(check_root)
         # A grant can change while the filesystem check is in flight.
         await self.db.call(lambda conn: _authorize(conn, scope))
 

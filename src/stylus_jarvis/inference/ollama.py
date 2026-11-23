@@ -3,11 +3,13 @@ import asyncio
 import json
 from collections.abc import AsyncGenerator
 from dataclasses import asdict
+from typing import Any
 
 import httpx
 
 from ..contracts.messages import ChatMessage, Code, Failure
 from ..settings import Manifest, Settings
+from ..runtime.offline import verify_listener
 
 
 class Ollama:
@@ -19,28 +21,45 @@ class Ollama:
                                          follow_redirects=False, transport=transport,
                                          headers={"Accept-Encoding": "identity"})
 
+    async def _metadata(self, path: str) -> dict[str, Any]:
+        async with self._client.stream("GET", path, timeout=3) as reply:
+            reply.raise_for_status()
+            data = bytearray()
+            async for block in reply.aiter_bytes(chunk_size=16384):
+                data.extend(block)
+                if len(data) > 2**20:
+                    raise Failure(Code.STREAM)
+            value = json.loads(data)
+            if not isinstance(value, dict):
+                raise Failure(Code.STREAM)
+            return value
+
     async def probe(self) -> None:
+        await asyncio.to_thread(verify_listener, self.settings.host, self.settings.port)
         try:
-            async with asyncio.timeout(3), self._client.stream("GET", "/api/tags", timeout=3) as reply:
-                reply.raise_for_status()
-                data = bytearray()
-                async for block in reply.aiter_bytes(chunk_size=16384):
-                    data.extend(block)
-                    if len(data) > 2**20:
-                        raise Failure(Code.STREAM)
-                models = json.loads(data)["models"]
+            async with asyncio.timeout(3):
+                status = await self._metadata("/api/status")
+                if not isinstance(status.get("cloud"), dict) or status["cloud"].get("disabled") is not True:
+                    raise Failure(Code.OFFLINE)
+                models = (await self._metadata("/api/tags"))["models"]
                 for model in models:
                     if model["name"] == self.manifest.model:
+                        if model.get("remote_model") or model.get("remote_host"):
+                            raise Failure(Code.OFFLINE)
                         if model["digest"].removeprefix("sha256:") != self.manifest.digest:
                             raise Failure(Code.DIGEST)
-                        return
-                raise Failure(Code.MODEL)
+                        break
+                else:
+                    raise Failure(Code.MODEL)
         except (httpx.HTTPError, TimeoutError) as exc:
             raise Failure(Code.MODEL) from exc
         except (KeyError, ValueError, TypeError, AttributeError) as exc:
             raise Failure(Code.STREAM) from exc
 
     async def generate(self, messages: list[ChatMessage]) -> AsyncGenerator[str, None]:
+        # Check the effective native boundary and current service before any prompt
+        # leaves this process, including calls made directly to the adapter.
+        await self.probe()
         payload = {"model": self.manifest.model, "messages": [asdict(m) for m in messages],
                    "think": False, "stream": True,
                    "options": {"num_ctx": self.settings.context, "num_predict": self.settings.output}}

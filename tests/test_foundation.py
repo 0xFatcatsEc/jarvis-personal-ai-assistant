@@ -211,10 +211,13 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
         body = b'{"message":{"content":"hello","thinking":"secret"},"done":false}\n{"message":{"content":""},"done":true}'
         def reply(req: httpx.Request) -> httpx.Response:
             self.assertEqual(req.url.host, "127.0.0.1")
+            if req.url.path == "/api/status":
+                return httpx.Response(200, json={"cloud": {"disabled": True}})
             if req.url.path == "/api/tags":
                 return httpx.Response(200, json={"models":[{"name":self.manifest.model,"digest":digest}]})
             return httpx.Response(200, content=body)
         adapter = Ollama(self.settings, self.manifest, transport=httpx.MockTransport(reply))
+        self.enterContext(patch("stylus_jarvis.inference.ollama.verify_listener"))
         try:
             await adapter.probe()
             self.assertEqual([p async for p in adapter.generate([])], ["hello"])
@@ -222,6 +225,7 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(Failure) as caught:
                 await adapter.probe()
             self.assertEqual(caught.exception.code, Code.DIGEST)
+            digest = self.manifest.digest
             body = b'{"done":false,"message":{"content":"unfinished"}}\n'
             with self.assertRaises(Failure):
                 _ = [p async for p in adapter.generate([])]
@@ -229,6 +233,7 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
             await adapter.close()
 
     async def test_redirect_does_not_leave_loopback(self) -> None:
+        self.enterContext(patch("stylus_jarvis.inference.ollama.verify_listener"))
         requests: list[str] = []
         def redirect(req: httpx.Request) -> httpx.Response:
             requests.append(str(req.url))

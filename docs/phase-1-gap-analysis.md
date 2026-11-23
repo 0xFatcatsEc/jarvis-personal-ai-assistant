@@ -18,7 +18,7 @@ The original Project Plan supplies the historical goals. The V2 Architecture Rev
 | 1.2.1.2 Bind requests to grants | Complete | Windows acceptance tests cover dispatch, revocation during generation, status-only settlement and delivery of receipts and history. See [request grant verification](#request-grant-verification). |
 | 1.2.2.1 Create local store | Complete for M1 | Foreign-key enforcement and live WAL placement verified on Windows. Upgrade, rollback and FTS5 passed on the identified application runtime. Final distribution binary verification belongs to packaging. See [local store verification](#local-store-verification). |
 | 1.2.2.2 Stream and reopen history | Complete for M1 | Windows process-restart and Qt tests cover ordered history, distinct terminal states, final-write recovery, model-independent replay and bounded close attempts. See [history verification](#history-verification). |
-| 1.3.1.1 Guard stack traffic | Partial | Application transport pins numeric loopback, disables proxies and redirects, exposes no cloud route. External Ollama runtime and updater remain independently configured. |
+| 1.3.1.1 Guard model and worker traffic | Complete for the provisioned Windows profile | The dedicated desktop and headless Ollama run under effective outbound rules. Windows acceptance covered real Qwen inference, native outbound denial, worker policy, cloud refusal and updater exclusion. See [offline traffic verification](#offline-traffic-verification). |
 | 1.3.1.2 Trace offline modes | Missing | No process-attributed cold-boot trace detached from network and connected with offline mode selected. |
 | 1.3.2.1 Pin and reinstall | Partial | Python lock, project entry point, SQL package data and model digest present. No offline wheelhouse/installer, complete release manifest, clean-profile rollback rehearsal or sample upgrade proof. |
 | 1.3.2.2 Bounded diagnostics | Partial | Rotating local allowlisted events, bounded queue and dropped-event counter present. No owner-visible degraded sink, writer timings, build field or saturation/rotation evidence. |
@@ -40,7 +40,7 @@ Paths are relative to `src/stylus_jarvis/` unless marked as repository files.
 | `storage/repositories.py` | Project registration, grant checks, history, idempotent creation, checkpoints and finalization | Revocation-safe settlement verified under 1.2.1.2. Project-wide search remains open. |
 | `runtime/scheduler.py` | One inference reservation, cancellation and idle signaling | The desktop shares one close deadline across the slot, commands and resource cleanup. |
 | `runtime/coordinator.py` | Request validation, context budget, generation, checkpoints, terminal receipt and unsaved retry | Scoped replay precedes model checks. Failed final writes have a local restart recovery path. |
-| `inference/ollama.py` | Bounded local HTTP, verified model inventory, NDJSON parser and stream cleanup | Mock and loopback tests pass. Real runtime performance and update behavior unverified. |
+| `inference/ollama.py`, `runtime/offline.py`, `runtime/offline-policy.ps1` | Bounded loopback HTTP, listener ownership, effective Windows policy, local model inventory and NDJSON streaming | Live guarded Qwen generation passed. Integrated latency and the cold-boot trace have separate acceptance gates. |
 | `inference/router.py` | Local profile, verified status and conservative context budgeting | Phase 1 local path implemented; avoid concurrent probe races. |
 | `contracts/messages.py`, `contracts/ports.py` | Immutable records, stable failure codes and structural interfaces | Usable injection boundary. Failure lacks structured durability and retry fields specified in design. |
 | `ui/main_window.py` | PySide6 layout, plain-text transcript, scope and stop controls | UI smoke test passes. No repair or recovery view. |
@@ -54,7 +54,7 @@ Priority reflects impact within Foundation. These are code-inspection findings u
 
 1. **High — unsaved final text on close. Resolved in 1.2.2.2.** A close attempt offers retry. A durable recovery record also allows explicit exit for recovery on restart. A memory-only reply blocks clean exit.
 2. **High — changed grant prevented terminal bookkeeping. Resolved in 1.2.1.2.** Revocation before final commit now settles the original turn in the same process. The final update preserves checkpointed text and withholds the content-bearing receipt.
-3. **High — release-mode offline guarantee is unproven.** Provider loopback checks cover application requests only. Establish a qualified local-only runtime and validate egress from the entire stack.
+3. **High — release-wide offline trace remains open.** Item 1.3.1.1 verified the controls on the MSI. Item 1.3.1.2 still requires process-attributed DNS and traffic capture in both cold-boot conditions before A1 can close.
 4. **Medium — replay required Ollama. Resolved in 1.2.2.2.** Stored terminal submissions replay after payload and grant checks without model access.
 5. **Medium — shutdown deadline covered only the slot. Resolved in 1.2.2.2.** Startup, slot drain, desktop tasks and service cleanup share a deadline. An expired attempt reports the outstanding work and keeps the window available.
 6. **Medium — resolved data directory could differ from checked profile. Resolved in 1.2.2.1.** The database writer checks the canonical target and its Windows volume type before opening SQLite. The Windows suite covers junctions into a configured OneDrive root and denial of a remote drive type.
@@ -133,5 +133,20 @@ A separate child held a real SQLite write lock across finalization and process e
 
 Deadline tests stalled startup, a terminal write, an unrelated desktop task and service cleanup. Each close attempt returned control within its test bound. A close with a durable pending reply offered retry or restart recovery. Simulated failure of both database and recovery writes kept the memory-only reply available for retry. [Windows desktop tests](../tests/test_desktop.py)
 
-The full Windows suite recorded **59 passes and one skip**. All history acceptance scenarios passed. The existing picker symlink test skipped because the account lacks link-creation privileges. Run the suite from the repository root with `.venv\Scripts\python.exe -B -m unittest discover -s tests -v`. Feature **1.2 Project session and chat** meets its Foundation backlog criteria. The next sequential Foundation item is **1.3.1.1 Guard model and worker traffic**, assigned to M2. Phase 2 has additional M1 gates.
+The full Windows suite recorded **59 passes and one skip** at Feature 1.2 closure. All history acceptance scenarios passed. The existing picker symlink test skipped because the account lacks link-creation privileges. Feature **1.2 Project session and chat** meets its Foundation backlog criteria. Phase 2 has additional M1 gates.
+
+## Offline traffic verification
+
+**1.3.1.1 completed on the MSI Thin A15, 23 November 2026.** The backlog requires cloud fallback, telemetry and external update traffic to be disabled during offline sessions. The tested profile uses dedicated CPython 3.12.13, headless Ollama 0.40.17 and the M0-pinned Qwen 3 4B. The four persistent outbound rules cover Python, Ollama, llama-server and llama-quantize on all Windows Firewall profiles.
+
+| Requirement | Windows evidence |
+|---|---|
+| Loopback-only model traffic | A live pinned Qwen chat returned visible text on the desktop Qt event loop. Windows also identified the loaded llama-server child at the private image path and showed only loopback listeners for it. IPv4 and IPv6 socket fixtures verified numeric endpoints, ignored proxy overrides and refusal to follow redirects. An unrelated listener on the requested port failed verification. |
+| Worker enforcement | Worker DNS, socket creation, external datagrams and unapproved child-process paths were denied. UNC and mapped project roots were refused before resolution. A worker in the private interpreter with the Python hook absent received Winsock 10013 on an external TCP connect, independently exercising Windows enforcement. |
+| Cloud fallback | The real server reported disabled cloud functionality. Missing, false and malformed status, remote model entries and an unverifiable native policy all prevented the chat POST. |
+| Telemetry and updates | Diagnostics wrote a local JSONL event with exporter settings present and rejected a network sink. The model launcher supplies a private headless runtime and clean environment. The GUI/updater layout was rejected before launch. |
+
+The full Windows suite recorded **68 passes and one skip**. All nine offline acceptance tests ran, including the opt-in live model and firewall test. The existing directory-symlink test skipped because Windows denied link creation.
+
+**1.3.1.2 Trace offline modes is next.** The release gate still needs process-attributed observations across a disconnected cold boot and a connected cold boot with offline mode selected. Independently running Windows services and the user's separate Ollama installation must be distinguished in that trace. [Windows acceptance tests](../tests/test_offline_policy.py) · [Launch, repeat acceptance and remove rules](windows-offline-profile.md)
 

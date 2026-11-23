@@ -13,12 +13,14 @@ class Code(StrEnum):
     INPUT = "input"
     CONFLICT = "conflict"
     MODEL = "model_unavailable"
+    OFFLINE = "offline_policy"
     DIGEST = "model_digest"
     STREAM = "invalid_stream"
     INTERNAL = "internal"
 
 
 ACTIONS = {
+    Code.OFFLINE: "Offline policy blocked this operation. Check the local path, guarded runtime and Windows Firewall rules.",
     Code.SETTINGS: "Check the local configuration and release manifest, then retry.",
     Code.SCHEMA: "Open with the matching application build or restore a verified snapshot.",
     Code.STORE: "Check local disk access and space, then retry the save.",

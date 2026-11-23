@@ -84,7 +84,7 @@ class LocalStoreTests(unittest.IsolatedAsyncioTestCase):
         # without requiring a mapped share or sending traffic off the laptop.
         kernel = ctypes.windll.kernel32
         with (patch.object(kernel, "GetVolumePathNameW", wraps=kernel.GetVolumePathNameW) as volume_path,
-              patch.object(kernel, "GetDriveTypeW", return_value=4) as drive_type):
+              patch.object(kernel, "GetDriveTypeW", side_effect=lambda _: 4 if volume_path.called else 3) as drive_type):
             with self.assertRaises(Failure):
                 await self.database(self.path).open()
             self.assertEqual(Path(volume_path.call_args.args[0]), target)

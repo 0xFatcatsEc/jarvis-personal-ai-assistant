@@ -1,8 +1,6 @@
 """Application composition root and Qt command bindings for the offline desktop."""
 import asyncio
 import csv
-import os
-import subprocess
 import sys
 import time
 from collections.abc import Awaitable, Callable
@@ -20,6 +18,7 @@ from .inference.router import Router
 from .runtime.coordinator import Coordinator
 from .runtime.diagnostics import Diagnostics, Event
 from .runtime.scheduler import Scheduler
+from .runtime.offline import install_worker_policy, verify_application, whoami
 from .settings import load, profile_path
 from .storage.database import Database
 from .storage.repositories import Repositories
@@ -28,10 +27,7 @@ from .ui.main_window import MainWindow
 
 def user_identity() -> str:
     """Use the process token's SID, which survives account renaming."""
-    executable = Path(os.environ["SystemRoot"]) / "System32" / "whoami.exe"
-    result = subprocess.run([str(executable), "/user", "/fo", "csv", "/nh"], check=True,
-                            capture_output=True, timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)
-    row = next(csv.reader([result.stdout.decode("ascii", "replace").strip()]))
+    row = next(csv.reader([whoami().decode("ascii", "replace").strip()]))
     if len(row) != 2 or not row[1].startswith("S-1-"):
         raise Failure(Code.SCOPE)
     return row[1]
@@ -330,8 +326,14 @@ async def run_app(view: MainWindow, root: Path, exiting: asyncio.Event, *, shutd
 
 
 def main() -> int:
+    install_worker_policy()
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
+    try:
+        verify_application()
+    except Failure as exc:
+        QMessageBox.critical(None, "STYLUS JARVIS", str(exc))
+        return 1
     try:
         root = profile_path()
         root.mkdir(parents=True, exist_ok=True)

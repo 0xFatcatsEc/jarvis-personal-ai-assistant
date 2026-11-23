@@ -198,6 +198,7 @@ class DesktopTest(unittest.TestCase):
                     window.hide()
 
     async def scenario(self, root: Path) -> None:
+        self.enterContext(patch("stylus_jarvis.inference.ollama.verify_listener"))
         _, manifest = load(root)
         requests: list[str] = []
 
@@ -206,7 +207,9 @@ class DesktopTest(unittest.TestCase):
                 headers = (await reader.readuntil(b"\r\n\r\n")).decode("ascii").split("\r\n")
                 path = headers[0].split()[1]
                 requests.append(path)
-                if path == "/api/tags":
+                if path == "/api/status":
+                    body = json.dumps({"cloud": {"disabled": True}}).encode()
+                elif path == "/api/tags":
                     body = json.dumps({"models": [{"name": manifest.model, "digest": manifest.digest}]}).encode()
                 else:
                     length = next(int(h.split(":")[1]) for h in headers if h.lower().startswith("content-length:"))

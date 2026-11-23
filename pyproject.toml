@@ -15,5 +15,5 @@ stylus-jarvis = "stylus_jarvis.bootstrap:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-stylus_jarvis = ["release-manifest.toml", "storage/migrations/*.sql"]
+stylus_jarvis = ["release-manifest.toml", "storage/migrations/*.sql", "runtime/offline-policy.ps1"]
 
