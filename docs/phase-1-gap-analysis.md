@@ -13,7 +13,7 @@ The original Project Plan supplies the historical goals. The V2 Architecture Rev
 | 1.1.1.1 Inventory laptop | Missing | No measured hardware record in the repository. First incomplete subtask. |
 | 1.1.1.2 Freeze fixtures | Missing | No versioned set of 20 reference questions, two projects, conflicting evidence and expected abstentions. |
 | 1.1.2.1 Provision assets | Partial | Qwen tag and full digest are packaged. No verified Windows installer, Whisper weights, Piper model/config/card or offline asset inventory. |
-| 1.1.2.2 Compare Qwen builds | Missing | No measured cold/warm timings, RAM/VRAM, scored results or selected-profile decision. The manifest identifies a candidate. |
+| 1.1.2.2 Compare Qwen builds | Missing at initial audit; now complete | See the [measured report and model decision](../outputs/qwen-msi-02/decision.md). |
 | 1.2.1.1 Project picker | Partial | Local roots, canonical identity, per-owner listing, project/thread selectors work. Test similarly named roots and alias collisions on Windows. |
 | 1.2.1.2 Bind request scope | Partial | Owner, project, conversation, grant and generation captured. Repository queries are scoped; switch during streaming is tested. Live revocation and settlement need work. |
 | 1.2.2.1 Create local store | Partial | WAL, FK enforcement, schema ledger and atomic operations tested. Validate the actual DB location after reparse resolution; exercise upgrade, rollback and FTS5 capability on shipped binaries. |
@@ -90,5 +90,7 @@ Recheck locally with `python packaging/windows/provision_assets.py verify`. The 
 
 ## Qwen comparison tooling
 
-**1.1.2.2 is partially complete.** The [qualification harness and runbook](../benchmarks/README.md) compare digest-pinned 4B and 8B candidates on the same recall and coding cases. Automated tests exercise the paired run, residency, scoring and selection logic with a simulated server. The Windows RAM and NVIDIA memory counters were smoke-tested on the MSI. Closing M0 still requires real model measurements, graded answers and an owner decision. No runtime model pin has been changed.
+The [qualification harness and runbook](../benchmarks/README.md) compare digest-pinned 4B and 8B candidates on the same recall and coding cases. A reviewed cold-load CUDA OOM now records a hardware disqualification while preserving the other candidate's complete measurements and all its eligibility gates.
+
+**M0 complete · 23 November 2026.** Both candidates were attempted on the MSI. Select the already-pinned Qwen 3 4B build for the tested local profile. It passed 20/20 recall, zero observed disclosures and 0.584 s warm p95 to first visible content. Its coding score was 4/10. The 8B build exhausted GPU memory before the first trial. No other M0 work remains. Full desktop A6 testing remains at its assigned later gate. [Benchmark report and selection](../outputs/qwen-msi-02/decision.md) · [Scored comparison](../outputs/qwen-msi-02/comparison.json)
 

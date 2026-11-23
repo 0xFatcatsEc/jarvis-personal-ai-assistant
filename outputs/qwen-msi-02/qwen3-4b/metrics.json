@@ -1,0 +1,55 @@
+{
+  "cold": {
+    "case": "cold",
+    "answer": "First, the user asked: \"What is 13 plus 9? Reply only with the number.\"\n\nI need to calculate 13 plus 9. That's straightforward addition. 13 + 9 equals 22.\n\nThe instruction says: \"Reply only with the number.\" So, I shouldn't add any extra text, like \"22\" or \"The answer is 22.\" I have to just output the number.\n\nLet me double-check the addition: 13 + 9. 10 + 9 is 19, and 3 more is 22. Yes, 13 + 9 = 22.\n\nAlso, the user specified \"Reply only with the number,\" so I should make sure my response is just \"22\" with no other characters. No spaces, no punctuation.\n\nIn the context, since it's a number, I can write it as 22.\n\nI think that's it. No need for anything else.\n\nSo, my response should be: 22\n\nBut to be precise, in the reply, I should output only the number, so I'll write 22.\n\nThe user said \"Reply only with the number,\" so in the chat, I should have just the number.\n\nAlso, since it's a text response, I need to make sure it's plain text.\n\nFinal answer: 22\n</think>\n\n22",
+    "first_text_s": 16.303837799991015,
+    "complete_s": 33.19101149999187,
+    "load_s": 15.778504,
+    "output_tokens": 294,
+    "done_reason": "stop"
+  },
+  "memory": {
+    "ram_mib": {
+      "baseline": 6598,
+      "peak": 7294,
+      "peak_above_baseline": 696
+    },
+    "vram_mib": {
+      "baseline": 39,
+      "peak": 2438,
+      "peak_above_baseline": 2399
+    }
+  },
+  "warm_recall": {
+    "n": 20,
+    "median_s": 0.3357211499969708,
+    "p95_s": 0.5837496999884024
+  },
+  "warm_coding": {
+    "n": 5,
+    "median_s": 0.26785750000271946,
+    "p95_s": 0.3216778000060003
+  },
+  "residency_after": [
+    {
+      "name": "qwen3:4b",
+      "model": "qwen3:4b",
+      "size": 3534917467,
+      "digest": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen3",
+        "families": [
+          "qwen3"
+        ],
+        "parameter_size": "4.0B",
+        "quantization_level": "Q4_K_M"
+      },
+      "expires_at": "2026-11-23T11:20:31.7229291+08:00",
+      "size_vram": 2344636907,
+      "context_length": 4096,
+      "runner": "llamacpp"
+    }
+  ]
+}

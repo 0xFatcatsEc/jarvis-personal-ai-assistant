@@ -1,0 +1,31 @@
+{
+  "collected_at_utc": "2026-11-23T03:01:28.6766209+00:00",
+  "manufacturer": "Micro-Star International Co., Ltd.",
+  "model": "Thin A15 B7UC",
+  "cpu": "AMD Ryzen 5 7535HS with Radeon Graphics        ",
+  "windows": "Microsoft Windows 11 Home Single Language",
+  "build": "26300",
+  "ram_bytes": 7738015744,
+  "system_volume_total_bytes": 482343907328,
+  "system_volume_free_bytes": 137209327616,
+  "display_adapters": [
+    {
+      "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+      "windows_driver": "32.0.16.1687"
+    },
+    {
+      "name": "AMD Radeon(TM) 660M",
+      "windows_driver": "32.0.11020.16"
+    }
+  ],
+  "nvidia_gpus": [
+    {
+      "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+      "dedicated_mib": 4096,
+      "driver": "616.87"
+    }
+  ],
+  "ac_line": "connected",
+  "power_scheme": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+  "vscode_process_count": 15
+}

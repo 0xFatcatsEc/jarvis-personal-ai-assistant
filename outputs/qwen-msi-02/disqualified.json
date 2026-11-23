@@ -1,0 +1,8 @@
+{
+  "model": "qwen3:8b",
+  "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+  "stage": "cold_model_load",
+  "reason": "cuda_out_of_memory",
+  "source": "Owner-supplied Ollama server log excerpt for the 8B attempt; qwen-msi-02 records the hardware snapshot and memory samples.",
+  "excerpt": "llama-server reported out-of-memory during startup: CUDA error: out of memory"
+}

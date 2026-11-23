@@ -131,3 +131,30 @@ class QualificationTests(unittest.TestCase):
             save()
             with self.assertRaises(ValueError):
                 q.score(path)
+
+            # A reviewed startup OOM excludes only the failed candidate.
+            meta = q.read(path/"run.json")
+            meta["status"] = "incomplete"
+            q.write(path/"run.json", meta)
+            eight = path/"qwen3-8b"
+            q.write(eight/"environment.json", {"nvidia_gpus":[{"dedicated_mib":4096}]})
+            exclusion = {"model":"qwen3:8b", "digest":q.PINS["qwen3:8b"],
+                         "stage":"cold_model_load","reason":"cuda_out_of_memory",
+                         "source":"test server log","excerpt":"CUDA error: out of memory"}
+            q.write(path/"disqualified.json", exclusion)
+            with self.assertRaisesRegex(ValueError, "before the first trial"):
+                q.score(path)
+            (eight/"trials.json").unlink()
+            (eight/"metrics.json").unlink()
+            rows[:] = [row for row in rows if row["model"] == "qwen3:4b"]
+            save()
+            self.assertIsNone(q.score(path)["candidate_for_owner_review"])  # disclosure still fails 4B
+            rows[0]["disclosure"] = "0"
+            save()
+            adjudicated = q.score(path)
+            self.assertEqual(adjudicated["candidate_for_owner_review"], "qwen3:4b")
+            self.assertNotIn("coding_out_of_10", adjudicated["models"]["qwen3:8b"])
+            exclusion["reason"] = "telemetry_timeout"
+            q.write(path/"disqualified.json", exclusion)
+            with self.assertRaises(ValueError):
+                q.score(path)

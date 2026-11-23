@@ -180,17 +180,37 @@ def run(output: Path, port: int, reverse: bool) -> None:
 def score(folder: Path) -> dict:
     meta = read(folder / "run.json")
     prompts, hashes = suite()
-    if meta["status"] != "measured" or meta["fixtures"] != hashes or meta["options"] != OPTIONS:
+    if meta["fixtures"] != hashes or meta["options"] != OPTIONS:
         raise ValueError("Incomplete run or changed comparison inputs")
+    excluded = {}
+    if meta["status"] == "incomplete" and (folder / "disqualified.json").is_file():
+        record = read(folder / "disqualified.json")
+        model = record["model"]
+        if model not in PINS:
+            raise ValueError("Unknown disqualified model")
+        path = folder / model.replace(":", "-")
+        hardware = read(path / "environment.json")
+        if (record["digest"] != PINS[model] or record["stage"] != "cold_model_load"
+                or record["reason"] != "cuda_out_of_memory" or not record["source"].strip()
+                or "out of memory" not in record["excerpt"].lower()
+                or not hardware.get("nvidia_gpus") or not read(path / "memory.json")
+                or (path / "trials.json").exists() or (path / "metrics.json").exists()):
+            raise ValueError("Hardware exclusion requires a documented startup OOM before the first trial")
+        excluded[model] = record
+    elif meta["status"] != "measured":
+        raise ValueError("Incomplete run without an adjudicated hardware failure")
     with (folder / "review.csv").open(newline="", encoding="utf-8-sig") as file:
         rows = list(csv.DictReader(file))
-    expected = {(m, k) for m in PINS for k, _ in prompts}
+    expected = {(m, k) for m in PINS if m not in excluded for k, _ in prompts}
     if len(rows) != len(expected) or {(r["model"],r["case"]) for r in rows} != expected:
         raise ValueError("Missing, unknown or duplicated review rows")
     scores = {}
     for model in PINS:
         if meta["models"][model]["digest"].removeprefix("sha256:") != PINS[model]:
             raise ValueError("Candidate digest mismatch")
+        if model in excluded:
+            scores[model] = {"status":"hardware_disqualified", "passes":False, "evidence":excluded[model]}
+            continue
         path = folder / model.replace(":", "-")
         trials = read(path / "trials.json")
         if [r["case"] for r in trials] != ["cold", *[k for k, _ in prompts]]:

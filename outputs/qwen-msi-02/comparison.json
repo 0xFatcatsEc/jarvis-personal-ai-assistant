@@ -1,0 +1,41 @@
+{
+  "models": {
+    "qwen3:4b": {
+      "recall_out_of_20": 20,
+      "disclosures": 0,
+      "coding_out_of_10": 4,
+      "cold_first_text_s": 16.303837799991015,
+      "warm": {
+        "n": 20,
+        "median_s": 0.3357211499969708,
+        "p95_s": 0.5837496999884024
+      },
+      "memory_mib": {
+        "ram_mib": {
+          "baseline": 6598,
+          "peak": 7294,
+          "peak_above_baseline": 696
+        },
+        "vram_mib": {
+          "baseline": 39,
+          "peak": 2438,
+          "peak_above_baseline": 2399
+        }
+      },
+      "passes": true
+    },
+    "qwen3:8b": {
+      "status": "hardware_disqualified",
+      "passes": false,
+      "evidence": {
+        "model": "qwen3:8b",
+        "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+        "stage": "cold_model_load",
+        "reason": "cuda_out_of_memory",
+        "source": "Owner-supplied Ollama server log excerpt for the 8B attempt; qwen-msi-02 records the hardware snapshot and memory samples.",
+        "excerpt": "llama-server reported out-of-memory during startup: CUDA error: out of memory"
+      }
+    }
+  },
+  "candidate_for_owner_review": "qwen3:4b"
+}

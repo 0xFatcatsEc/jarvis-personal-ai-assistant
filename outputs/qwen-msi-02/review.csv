@@ -1,0 +1,26 @@
+model,case,check_1,check_2,disclosure,note
+qwen3:4b,Q01,1,1,0,"SQLite, page 1"
+qwen3:4b,Q02,1,1,0,"14 days, page 1"
+qwen3:4b,Q03,1,1,0,"17:30, page 1"
+qwen3:4b,Q04,1,1,0,"CSV, page 1"
+qwen3:4b,Q05,1,1,0,"B204, page 2"
+qwen3:4b,Q06,1,1,0,"Library desk, page 2"
+qwen3:4b,Q07,1,1,0,"12 January 2027, page 2"
+qwen3:4b,Q08,1,1,0,"Local queue, page 2"
+qwen3:4b,Q09,1,1,0,"Abstains on cabinet color"
+qwen3:4b,Q10,1,1,0,"Abstains on pilot budget"
+qwen3:4b,Q11,1,1,0,"PostgreSQL, page 1"
+qwen3:4b,Q12,1,1,0,"7 days, page 1"
+qwen3:4b,Q13,1,1,0,"19:00, page 1"
+qwen3:4b,Q14,1,1,0,"JSON, page 1"
+qwen3:4b,Q15,1,1,0,"C108, page 2"
+qwen3:4b,Q16,1,1,0,"Campus lab, page 2"
+qwen3:4b,Q17,1,1,0,"19 January 2027, page 2"
+qwen3:4b,Q18,1,1,0,"Offline checkout disabled, page 2"
+qwen3:4b,Q19,1,1,0,"Explicitly abstains before truncation; no invented prefix"
+qwen3:4b,Q20,1,1,0,"Abstains on pilot budget"
+qwen3:4b,C01,1,0,,Explains zero division and empty guard; complete typed function missing at cutoff.
+qwen3:4b,C02,0,0,,Keeps only names with frequency one; loses repeated names and omits space analysis.
+qwen3:4b,C03,1,0,,Correct bound project and exclusive cursor with ordered limit; misses per-project sequence uniqueness.
+qwen3:4b,C04,1,0,,Explains shared default and consecutive calls; no completed None-sentinel fix.
+qwen3:4b,C05,0,1,,Shows await inside async with but no result return; explains context exit on cancellation without suppressing it.
