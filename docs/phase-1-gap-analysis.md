@@ -17,7 +17,7 @@ The original Project Plan supplies the historical goals. The V2 Architecture Rev
 | 1.2.1.1 Project picker | Partial at initial audit; now complete | Windows tests verified distinct IDs for identically named roots, persistence after reopening SQLite, keyboard selection and alias resolution. See [project picker verification](#project-picker-verification). |
 | 1.2.1.2 Bind requests to grants | Complete | Windows acceptance tests cover dispatch, revocation during generation, status-only settlement and delivery of receipts and history. See [request grant verification](#request-grant-verification). |
 | 1.2.2.1 Create local store | Complete for M1 | Foreign-key enforcement and live WAL placement verified on Windows. Upgrade, rollback and FTS5 passed on the identified application runtime. Final distribution binary verification belongs to packaging. See [local store verification](#local-store-verification). |
-| 1.2.2.2 Stream and reopen history | Partial | Offscreen desktop test streams, saves and reopens with model offline. Tests verify ordered checkpoints, cancellation, deduplication and interrupted reconciliation. Retry and shutdown gaps below. |
+| 1.2.2.2 Stream and reopen history | Complete for M1 | Windows process-restart and Qt tests cover ordered history, distinct terminal states, final-write recovery, model-independent replay and bounded close attempts. See [history verification](#history-verification). |
 | 1.3.1.1 Guard stack traffic | Partial | Application transport pins numeric loopback, disables proxies and redirects, exposes no cloud route. External Ollama runtime and updater remain independently configured. |
 | 1.3.1.2 Trace offline modes | Missing | No process-attributed cold-boot trace detached from network and connected with offline mode selected. |
 | 1.3.2.1 Pin and reinstall | Partial | Python lock, project entry point, SQL package data and model digest present. No offline wheelhouse/installer, complete release manifest, clean-profile rollback rehearsal or sample upgrade proof. |
@@ -38,8 +38,8 @@ Paths are relative to `src/stylus_jarvis/` unless marked as repository files.
 | `runtime/diagnostics.py` | Typed events, bounded queue, rotating JSONL and memory health state | Functional infrastructure; UI does not expose log failures. |
 | `storage/database.py`, `storage/migrations/0001_initial.sql` | Thread-owned SQLite, migration checksum ledger, pre-upgrade snapshot, integrity checks, orphan reconciliation | Single executor serializes reads as well as writes. Measure latency before separating readers. |
 | `storage/repositories.py` | Project registration, grant checks, history, idempotent creation, checkpoints and finalization | Revocation-safe settlement verified under 1.2.1.2. Project-wide search remains open. |
-| `runtime/scheduler.py` | One inference reservation, cancellation and idle signaling | Busy rejection and active cancellation tested. Full shutdown duration remains unbounded. |
-| `runtime/coordinator.py` | Request validation, context budget, generation, checkpoints, terminal receipt and unsaved retry | Primary lifecycle works. Duplicate retry still depends on live inference. |
+| `runtime/scheduler.py` | One inference reservation, cancellation and idle signaling | The desktop shares one close deadline across the slot, commands and resource cleanup. |
+| `runtime/coordinator.py` | Request validation, context budget, generation, checkpoints, terminal receipt and unsaved retry | Scoped replay precedes model checks. Failed final writes have a local restart recovery path. |
 | `inference/ollama.py` | Bounded local HTTP, verified model inventory, NDJSON parser and stream cleanup | Mock and loopback tests pass. Real runtime performance and update behavior unverified. |
 | `inference/router.py` | Local profile, verified status and conservative context budgeting | Phase 1 local path implemented; avoid concurrent probe races. |
 | `contracts/messages.py`, `contracts/ports.py` | Immutable records, stable failure codes and structural interfaces | Usable injection boundary. Failure lacks structured durability and retry fields specified in design. |
@@ -52,21 +52,21 @@ Paths are relative to `src/stylus_jarvis/` unless marked as repository files.
 
 Priority reflects impact within Foundation. These are code-inspection findings unless identified by the test descriptions above.
 
-1. **High — unsaved final text can be discarded on close.** The coordinator retains failed finalization in memory. Desktop shutdown can return success while that pending save exists. Keep the window recoverable and offer retry before clean exit. Test a failed final commit followed by Close.
+1. **High — unsaved final text on close. Resolved in 1.2.2.2.** A close attempt offers retry. A durable recovery record also allows explicit exit for recovery on restart. A memory-only reply blocks clean exit.
 2. **High — changed grant prevented terminal bookkeeping. Resolved in 1.2.1.2.** Revocation before final commit now settles the original turn in the same process. The final update preserves checkpointed text and withholds the content-bearing receipt.
 3. **High — release-mode offline guarantee is unproven.** Provider loopback checks cover application requests only. Establish a qualified local-only runtime and validate egress from the entire stack.
-4. **Medium — idempotent replay unnecessarily requires Ollama.** Coordinator probes and builds context before looking up a previously committed submission. Resolve scoped prior receipts first. Test replay of an acknowledged submission with the model stopped.
-5. **Medium — shutdown deadline only covers slot waiting.** Desktop subsequently gathers all tasks without a deadline. Report unresolved durability and distinguish forced exit from a clean close.
+4. **Medium — replay required Ollama. Resolved in 1.2.2.2.** Stored terminal submissions replay after payload and grant checks without model access.
+5. **Medium — shutdown deadline covered only the slot. Resolved in 1.2.2.2.** Startup, slot drain, desktop tasks and service cleanup share a deadline. An expired attempt reports the outstanding work and keeps the window available.
 6. **Medium — resolved data directory could differ from checked profile. Resolved in 1.2.2.1.** The database writer checks the canonical target and its Windows volume type before opening SQLite. The Windows suite covers junctions into a configured OneDrive root and denial of a remote drive type.
 7. **Medium — stale UI state can lose work or mislead.** Selection clears the draft, older command failures can update the new selection’s status, and startup failure re-enables controls without a valid runtime. Add scoped draft retention and a distinct recovery screen.
-8. **Medium — no last-page bound in history rendering.** The repository paginates, but the UI collects all pages in RAM. Two concurrent renders within the same scope can reorder the display. Use bounded pages and view-generation checks.
+8. **Medium — long histories still accumulate in UI memory.** Reads are paginated, but the widget displays the entire matching conversation. The same-scope refresh race was fixed and tested in 1.2.2.2. A bounded display window remains a separate large-history improvement.
 9. **Low — migration checksum depends on checkout line endings.** The ledger hashes raw SQL bytes. Enforce LF for packaged SQL or canonicalize bytes consistently before recording the first distributed migration.
 
 ## Architecture deviations and technical debt
 
 Session ownership lives across bootstrap, repository and coordinator rather than the blueprint’s session service. Prompt assembly spans repository and router. The UI controller has direct access to concrete repositories and model routing. Scope records reside in messages rather than the planned context module. Move boundaries incrementally when addressing the corresponding lifecycle defects. Preserve the tested SQLite and transport contracts. Future-phase modules have no delivery obligation in this increment.
 
-The database actor has one connection and an unbounded executor work queue. Per-frame authorization and full reply-prefix concatenation each add overhead. Profile sustained streams, large history and mixed workloads before changing these paths. The diagnostics schema and failure envelope need contract tests. End-to-end fault coverage still lacks a real process kill, full disk, suspend/resume and closed-window late callbacks.
+The database actor has one connection and an unbounded executor work queue. Per-frame authorization and full reply-prefix concatenation each add overhead. Profile sustained streams, large history and mixed workloads before changing these paths. The diagnostics schema and failure envelope need contract tests. An abrupt Windows process exit is covered. Physical disk exhaustion, suspend/resume and callbacks after native window destruction remain open operational tests.
 
 ## Next implementation increment
 
@@ -123,5 +123,15 @@ The full Windows suite recorded **40 passes and one skip** at grant closure. All
 
 All nine local-store tests passed. The full Windows suite recorded 49 passes and one skip for the existing picker symlink test. Repeat the store checks with `.venv\Scripts\python.exe -B -m unittest discover -s tests -p test_local_store.py -v`.
 
-The repository has no standalone desktop distribution yet. Item 1.3.2.1 owns the offline release bundle. Run the FTS5 test with its packaged interpreter to verify the shipped binary at that gate. The next sequential subtask is **1.2.2.2 Stream and reopen history**.
+The repository has no standalone desktop distribution yet. Item 1.3.2.1 owns the offline release bundle. Run the FTS5 test with its packaged interpreter to verify the shipped binary at that gate.
+
+## History verification
+
+**1.2.2.2 Stream and reopen history — complete for M1.** A Windows child process streamed two completed replies, cancelled another after a fragment and exited abruptly during a fourth turn after a checkpoint. On restart the searchable Qt transcript showed the exact original order, distinct completed, cancelled and interrupted labels, and the checkpointed prefix. A delayed, older refresh could not replace a newer render spanning 104 messages. [Process and rendering tests](../tests/test_history_lifecycle.py)
+
+A separate child held a real SQLite write lock across finalization and process exit. The next launch restored the exact multiline Unicode answer once. Replaying the same submission returned its completed receipt with Ollama unavailable. Revocation between process exit and recovery withheld the final answer. Conflicting payloads and stale grants remained rejected. [Submission tests](../tests/test_foundation.py) · [Grant tests](../tests/test_request_grants.py)
+
+Deadline tests stalled startup, a terminal write, an unrelated desktop task and service cleanup. Each close attempt returned control within its test bound. A close with a durable pending reply offered retry or restart recovery. Simulated failure of both database and recovery writes kept the memory-only reply available for retry. [Windows desktop tests](../tests/test_desktop.py)
+
+The full Windows suite recorded **59 passes and one skip**. All history acceptance scenarios passed. The existing picker symlink test skipped because the account lacks link-creation privileges. Run the suite from the repository root with `.venv\Scripts\python.exe -B -m unittest discover -s tests -v`. Feature **1.2 Project session and chat** meets its Foundation backlog criteria. The next sequential Foundation item is **1.3.1.1 Guard model and worker traffic**, assigned to M2. Phase 2 has additional M1 gates.
 

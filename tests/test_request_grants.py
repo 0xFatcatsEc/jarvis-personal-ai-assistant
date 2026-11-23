@@ -177,15 +177,15 @@ class RequestGrantTests(unittest.IsolatedAsyncioTestCase):
     async def test_revoke_before_duplicate_receipt_delivery(self) -> None:
         await self.submit()
         self.events.clear()
-        begin = self.store.begin
+        lookup = self.store.lookup
 
-        async def lookup_then_revoke(scope: Scope, request: UUID, text: str, digest: str) -> tuple[Turn, bool]:
-            result = await begin(scope, request, text, digest)
-            self.assertFalse(result[1])
+        async def lookup_then_revoke(scope: Scope, request: UUID, text: str) -> Turn | None:
+            result = await lookup(scope, request, text)
+            self.assertIsNotNone(result)
             await self.revoke()
             return result
 
-        with patch.object(self.store, "begin", lookup_then_revoke), self.assertRaises(Failure) as denied:
+        with patch.object(self.store, "lookup", lookup_then_revoke), self.assertRaises(Failure) as denied:
             await self.submit()
         self.assertEqual(denied.exception.code, Code.SCOPE)
         self.assertEqual(self.events, [])

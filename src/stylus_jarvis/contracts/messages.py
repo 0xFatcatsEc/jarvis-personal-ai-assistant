@@ -68,6 +68,15 @@ class Turn:
 
 
 @dataclass(frozen=True, slots=True)
+class PendingSave:
+    scope: Scope
+    key: str
+    state: State
+    answer: str
+    error: Code | None
+
+
+@dataclass(frozen=True, slots=True)
 class ChatMessage:
     role: str
     content: str

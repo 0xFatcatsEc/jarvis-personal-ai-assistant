@@ -3,22 +3,12 @@ import asyncio
 import time
 from collections.abc import Callable
 from contextlib import aclosing
-from dataclasses import dataclass
 from uuid import UUID
 
-from ..contracts.messages import ChatMessage, Code, Failure, RuntimeEvent, Scope, State, Turn
+from ..contracts.messages import ChatMessage, Code, Failure, PendingSave, RuntimeEvent, Scope, State, Turn
 from ..contracts.ports import ConversationStore, LocalRoute
 from .diagnostics import Diagnostics, Event
 from .scheduler import Scheduler
-
-
-@dataclass(frozen=True)
-class PendingSave:
-    scope: Scope
-    key: str
-    state: State
-    answer: str
-    error: Code | None
 
 
 class Coordinator:
@@ -33,6 +23,7 @@ class Coordinator:
         self.clock = clock
         self.selection: Scope | None = None
         self.pending: PendingSave | None = None
+        self.recoverable = False
 
     def select(self, scope: Scope | None) -> None:
         if scope != self.selection:
@@ -52,14 +43,20 @@ class Coordinator:
             raise Failure(Code.SCOPE)
         if scope.grant != item.scope.grant:
             await self.store.validate(scope)
+        settled = False
         try:
             result = await self.store.finish(item.scope, item.key, item.state, item.answer, item.error)
+            settled = True
         except Failure as exc:
-            if exc.code == Code.SCOPE and self.pending is item:
-                self.pending = None
+            settled = exc.code == Code.SCOPE
             raise
-        if self.pending is item:
-            self.pending = None
+        finally:
+            if settled and self.pending is item:
+                if self.recoverable:
+                    await self.store.clear_recovery(item.key)
+                if self.pending is item:
+                    self.recoverable = False
+                    self.pending = None
         await self.store.validate(item.scope)
         if scope != self.selection:
             raise Failure(Code.SCOPE)
@@ -68,12 +65,21 @@ class Coordinator:
     async def submit(self, scope: Scope, request: UUID, prompt: str) -> Turn:
         if scope != self.selection:
             raise Failure(Code.SCOPE)
-        if self.pending is not None:
-            raise Failure(Code.STORE)
-        remaining = self.router.history_budget(prompt)
         slot = self.scheduler.reserve(request)
         started = self.clock()
         try:
+            prior = await self.store.lookup(scope, request, prompt)
+            if prior is not None:
+                await self.store.validate(scope)
+            if slot.stopped or scope != self.selection:
+                raise Failure(Code.SCOPE)
+            if prior is not None:
+                if prior.state == State.ACTIVE:
+                    raise Failure(Code.BUSY)
+                return prior
+            if self.pending is not None:
+                raise Failure(Code.STORE)
+            remaining = self.router.history_budget(prompt)
             await self.store.validate(scope, require_root=True)
             await self.router.probe()
             history = await self.store.context(scope, remaining)
@@ -84,6 +90,8 @@ class Coordinator:
                 await self.store.validate(scope)
                 if self.selection != scope:
                     raise Failure(Code.SCOPE)
+                if turn.state == State.ACTIVE:
+                    raise Failure(Code.BUSY)
                 return turn
             answer = ""
             state = State.COMPLETED
@@ -124,8 +132,14 @@ class Coordinator:
                 result = await self.store.finish(scope, turn.key, state, answer, error)
             except Failure as exc:
                 if exc.code in (Code.STORE, Code.BUSY):
-                    self.pending = PendingSave(scope, turn.key, state, answer, error)
-                    self._deliver(scope, request, "unsaved", "Reply unsaved. Retry the save in this conversation.")
+                    item = PendingSave(scope, turn.key, state, answer, error)
+                    self.recoverable = False
+                    try:
+                        await self.store.preserve(item)
+                        self.recoverable = True
+                    finally:
+                        self.pending = item
+                        self._deliver(scope, request, "unsaved", "Reply unsaved. Retry the save in this conversation.")
                 raise
             self.log.emit(Event.FINISH, run=request, code=error, elapsed_ms=(self.clock()-started)*1000,
                           digest=self.router.digest)

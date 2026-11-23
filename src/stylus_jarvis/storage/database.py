@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from ..contracts.messages import Code, Failure
 from ..settings import local_data_path
+from .recovery import recover
 
 
 def _check_integrity(conn: sqlite3.Connection) -> None:
@@ -85,6 +86,7 @@ class Database:
                 raise Failure(Code.SCHEMA)
             if len(applied) == len(migrations):
                 _check_integrity(conn)
+            recover(conn, self.path)
             conn.execute("UPDATE turns SET state='interrupted',ended_at=CURRENT_TIMESTAMP WHERE state='active'")
             self._connection = conn
         except (OSError, sqlite3.Error) as exc:

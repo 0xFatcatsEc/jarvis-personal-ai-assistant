@@ -8,6 +8,7 @@ import unittest
 from collections.abc import AsyncIterator
 from importlib.resources import files
 from pathlib import Path
+from unittest.mock import patch
 from uuid import uuid4
 
 import httpx
@@ -90,6 +91,33 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(await self.store.history(self.scope, query="marker")), 1)
         self.log.close()
         self.assertNotIn("private marker", (self.root/"logs"/"runtime.jsonl").read_text())
+
+    async def test_completed_submission_replays_without_model_or_budget(self) -> None:
+        request = uuid4()
+        expected = await self.core.submit(self.scope, request, "original")
+        with (patch.object(self.router, "probe", side_effect=Failure(Code.MODEL)) as probe,
+              patch.object(self.router, "history_budget", side_effect=Failure(Code.INPUT)) as budget):
+            self.assertEqual(await self.core.submit(self.scope, request, "original"), expected)
+            with self.assertRaises(Failure) as conflict:
+                await self.core.submit(self.scope, request, "changed")
+            self.assertEqual(conflict.exception.code, Code.CONFLICT)
+            probe.assert_not_awaited()
+            budget.assert_not_called()
+        self.assertEqual(len(self.model.calls), 1)
+        self.assertEqual(len(await self.store.history(self.scope)), 2)
+
+    async def test_failed_final_save_recovers_on_reopen(self) -> None:
+        request = uuid4()
+        with patch.object(self.store, "finish", side_effect=Failure(Code.BUSY)), self.assertRaises(Failure):
+            await self.core.submit(self.scope, request, "question")
+        self.assertIsNotNone(self.core.pending)
+        await self.db.close()
+        self.db = Database(self.db.path)
+        await self.db.open()
+        self.store = Repositories(self.db)
+        self.assertEqual(await self.store.history(self.scope), [
+            (1, "user", "question", "completed"), (2, "assistant", "Answer", "completed"),
+        ])
 
     async def test_switch_cancels_stream(self) -> None:
         self.model.hold = True

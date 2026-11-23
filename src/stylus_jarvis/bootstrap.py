@@ -49,6 +49,9 @@ class Desktop:
         self.generation = 0
         self.tasks: set[asyncio.Task[None]] = set()
         self.sending = False
+        self.streaming_scope: Scope | None = None
+        self.history_version = 0
+        self.close_notice_key: str | None = None
         self.closing = False
         self.request: UUID | None = None
         self.view.add_project.clicked.connect(lambda: self.spawn(self.add_project))
@@ -69,7 +72,11 @@ class Desktop:
                 await action()
             except Failure as exc:
                 self.log.emit(Event.ERROR, code=exc.code, run=exc.reference)
-                self.view.status.setText(str(exc))
+                pending = self.core.pending
+                if pending is not None and pending.scope == self.core.selection and exc.code in (Code.BUSY, Code.STORE):
+                    self.view.status.setText("Reply unsaved. Retry the save in this conversation.")
+                else:
+                    self.view.status.setText(str(exc))
             except Exception:
                 self.log.emit(Event.ERROR, code=Code.INTERNAL)
                 self.view.status.setText(str(Failure(Code.INTERNAL)))
@@ -81,7 +88,8 @@ class Desktop:
 
     def controls(self) -> None:
         self.view.send.setEnabled(bool(self.core.selection and self.router.verified
-                                      and not self.sending and self.core.pending is None))
+                                      and not self.sending and self.core.pending is None
+                                      and not self.core.scheduler.closing))
         self.view.stop.setEnabled(self.sending)
         self.view.retry.setEnabled(self.core.pending is not None)
         self.view.probe.setEnabled(not self.sending)
@@ -142,14 +150,20 @@ class Desktop:
 
     async def history(self) -> None:
         scope = self.core.selection
-        if not scope:
+        if not scope or scope == self.streaming_scope:
             return
+        self.history_version += 1
+        version = self.history_version
         query = self.view.search.text()
+
+        def current() -> bool:
+            return version == self.history_version and scope == self.core.selection and query == self.view.search.text()
+
         cursor = 0
         lines: list[str] = []
         while True:
             page = await self.store.history(scope, after=cursor, query=query)
-            if scope != self.core.selection or query != self.view.search.text():
+            if not current():
                 return
             for seq, role, text, state in page:
                 lines.append(f"{role} [{state}]\n{text}")
@@ -157,7 +171,7 @@ class Desktop:
             if len(page) < 100:
                 break
         await self.store.validate(scope)
-        if scope != self.core.selection or query != self.view.search.text():
+        if not current():
             return
         self.view.history.setPlainText("\n\n".join(lines))
         self.view.history.moveCursor(QTextCursor.MoveOperation.End)
@@ -186,9 +200,11 @@ class Desktop:
 
     def send(self) -> None:
         scope = self.core.selection
-        if not scope or self.sending:
+        if not scope or self.sending or self.core.scheduler.closing:
             return
         self.sending = True
+        self.streaming_scope = scope
+        self.history_version += 1
         request = uuid4()
         self.request = request
         text = self.view.draft.toPlainText()
@@ -204,6 +220,7 @@ class Desktop:
                     self.view.status.setText(f"Offline · {turn.state.value}")
             finally:
                 self.sending = False
+                self.streaming_scope = None
                 if scope == self.core.selection and self.core.pending is None:
                     await self.history()
                     threads = await self.store.conversations(self.owner, scope.project)
@@ -217,57 +234,99 @@ class Desktop:
         await self.history()
         self.view.status.setText("Reply saved")
 
-    async def shutdown(self) -> None:
+    async def shutdown(self, grace: float = 5.0) -> bool:
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + grace
         self.closing = True
         self.view.centralWidget().setEnabled(False)
-        if not await self.core.scheduler.shutdown():
-            self.view.status.setText("Finishing the accepted database operation before closing…")
-        if self.tasks:
-            await asyncio.gather(*list(self.tasks), return_exceptions=True)
+        idle = await self.core.scheduler.shutdown(grace)
+        tasks = set(self.tasks)
+        if idle and tasks:
+            _, tasks = await asyncio.wait(tasks, timeout=max(0., deadline - loop.time()))
+        if not idle or tasks:
+            self.view.status.setText("Close timed out. Work is still settling. Close again to check.")
+            return False
+        item = self.core.pending
+        if item is not None and (not self.core.recoverable or self.close_notice_key != item.key):
+            self.close_notice_key = item.key
+            self.closing = False
+            self.view.centralWidget().setEnabled(True)
+            self.controls()
+            message = ("Retry save, or close again to recover the reply on restart." if self.core.recoverable
+                       else "Reply exists only in memory. Keep this window open and retry the save.")
+            self.view.status.setText(message)
+            return False
+        return True
 
 
-async def run_app(view: MainWindow, root: Path, exiting: asyncio.Event) -> int:
+async def run_app(view: MainWindow, root: Path, exiting: asyncio.Event, *, shutdown_grace: float = 5.0) -> int:
     log = Diagnostics(root / "logs")
     db = Database(root / "data" / "jarvis.sqlite3")
     model: Ollama | None = None
     desktop: Desktop | None = None
-    try:
-        log.emit(Event.START)
-        settings, manifest = await asyncio.to_thread(load, root)
-        await db.open()
-        store = Repositories(db)
-        model = Ollama(settings, manifest)
-        router = Router(model, settings, manifest)
-        scheduler = Scheduler()
-        def deliver(event: RuntimeEvent) -> None:
-            if desktop:
-                desktop.event(event)
-        core = Coordinator(store, router, scheduler, log, deliver)
-        owner = await asyncio.to_thread(user_identity)
-        desktop = Desktop(view, store, router, core, log, owner)
-        if not exiting.is_set():
-            await desktop.projects()
-            view.centralWidget().setEnabled(True)
-            desktop.controls()
-            desktop.spawn(desktop.probe)
-            await exiting.wait()
-        return 0
-    except (Failure, OSError, subprocess.SubprocessError) as exc:
-        failure = exc if isinstance(exc, Failure) else Failure(Code.INTERNAL)
-        log.emit(Event.ERROR, code=failure.code, run=failure.reference)
-        view.centralWidget().setEnabled(True)
-        view.status.setText(f"Startup blocked. {failure} Close and reopen after repair.")
-        if not exiting.is_set():
-            await exiting.wait()
-        return 1
-    finally:
-        if desktop:
-            await desktop.shutdown()
-        if model:
-            await model.close()
-        await db.close()
-        log.emit(Event.STOP)
-        await asyncio.to_thread(log.close)
+    stopping = False
+
+    async def startup() -> int:
+        nonlocal model, desktop
+        try:
+            log.emit(Event.START)
+            settings, manifest = await asyncio.to_thread(load, root)
+            await db.open()
+            store = Repositories(db)
+            model = Ollama(settings, manifest)
+            router = Router(model, settings, manifest)
+            def deliver(event: RuntimeEvent) -> None:
+                if desktop:
+                    desktop.event(event)
+            core = Coordinator(store, router, Scheduler(), log, deliver)
+            owner = await asyncio.to_thread(user_identity)
+            desktop = Desktop(view, store, router, core, log, owner)
+            if not stopping:
+                await desktop.projects()
+            if not stopping:
+                view.centralWidget().setEnabled(True)
+                desktop.controls()
+                desktop.spawn(desktop.probe)
+            return 0
+        except Exception as exc:
+            failure = exc if isinstance(exc, Failure) else Failure(Code.INTERNAL)
+            log.emit(Event.ERROR, code=failure.code, run=failure.reference)
+            view.status.setText(f"Startup blocked. {failure} Close and reopen after repair.")
+            return 1
+
+    async def close_services() -> None:
+        try:
+            if model:
+                await model.close()
+        finally:
+            try:
+                await db.close()
+            finally:
+                log.emit(Event.STOP)
+                await asyncio.to_thread(log.close)
+
+    startup_task = asyncio.create_task(startup())
+    cleanup: asyncio.Task[None] | None = None
+    loop = asyncio.get_running_loop()
+    while True:
+        await exiting.wait()
+        exiting.clear()
+        stopping = True
+        deadline = loop.time() + shutdown_grace
+        done, _ = await asyncio.wait({startup_task}, timeout=shutdown_grace)
+        if not done:
+            view.status.setText("Close timed out during startup. Close again to check.")
+            continue
+        result = startup_task.result()
+        if cleanup is None:
+            if desktop and not await desktop.shutdown(max(0., deadline - loop.time())):
+                continue
+            cleanup = asyncio.create_task(close_services())
+        done, _ = await asyncio.wait({cleanup}, timeout=max(0., deadline - loop.time()))
+        if done:
+            cleanup.result()
+            return 2 if desktop and desktop.core.pending is not None else result
+        view.status.setText("Close timed out while closing services. Close again to check.")
 
 
 def main() -> int:

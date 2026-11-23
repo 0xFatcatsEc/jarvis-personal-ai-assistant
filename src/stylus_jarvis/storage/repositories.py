@@ -5,8 +5,9 @@ import sqlite3
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from ..contracts.messages import ChatMessage, Code, Failure, Scope, State, Turn
+from ..contracts.messages import ChatMessage, Code, Failure, PendingSave, Scope, State, Turn
 from .database import Database
+from . import recovery
 
 
 def _authorize(conn: sqlite3.Connection, scope: Scope) -> None:
@@ -28,6 +29,17 @@ def _turn(conn: sqlite3.Connection, scope: Scope, key: str) -> Turn:
     if not row:
         raise Failure(Code.SCOPE)
     return Turn(row[0], row[1], row[2], State(row[3]))
+
+
+def _lookup(conn: sqlite3.Connection, scope: Scope, request: UUID, text: str) -> Turn | None:
+    row = conn.execute("SELECT id FROM turns WHERE conversation=? AND submission=?",
+                       (scope.conversation, request.hex)).fetchone()
+    if row is None:
+        return None
+    turn = _turn(conn, scope, row[0])
+    if turn.question != text:
+        raise Failure(Code.CONFLICT)
+    return turn
 
 
 class Repositories:
@@ -85,16 +97,19 @@ class Repositories:
         # A grant can change while the filesystem check is in flight.
         await self.db.call(lambda conn: _authorize(conn, scope))
 
+    async def lookup(self, scope: Scope, request: UUID, text: str) -> Turn | None:
+        def read(conn: sqlite3.Connection) -> Turn | None:
+            _authorize(conn, scope)
+            return _lookup(conn, scope, request, text)
+        return await self.db.call(read)
+
     async def begin(self, scope: Scope, request: UUID, text: str, digest: str) -> tuple[Turn, bool]:
         def begin(conn: sqlite3.Connection) -> tuple[Turn, bool]:
             _authorize(conn, scope)
             cid = scope.conversation
-            existing = conn.execute("SELECT id FROM turns WHERE conversation=? AND submission=?", (cid, request.hex)).fetchone()
-            if existing:
-                turn = _turn(conn, scope, existing[0])
-                if turn.question != text:
-                    raise Failure(Code.CONFLICT)
-                return turn, False
+            existing = _lookup(conn, scope, request, text)
+            if existing is not None:
+                return existing, False
             turn_id = uuid4().hex
             seq = conn.execute("SELECT COALESCE(MAX(seq),0)+1 FROM messages WHERE conversation=?", (cid,)).fetchone()[0]
             conn.execute("INSERT INTO turns(id,conversation,submission,digest,grant_revision,state) "
@@ -117,36 +132,23 @@ class Repositories:
         await self.db.call(update, write=True)
 
     async def finish(self, scope: Scope, key: str, state: State, text: str, error: Code | None) -> Turn:
-        if state == State.ACTIVE:
-            raise Failure(Code.CONFLICT)
         def finish(conn: sqlite3.Connection) -> Turn | None:
-            row = conn.execute(
-                "SELECT p.grant,t.grant_revision,t.state FROM projects p JOIN conversations c ON c.project=p.id "
-                "JOIN turns t ON t.conversation=c.id WHERE p.owner=? AND p.id=? AND c.id=? AND t.id=?",
-                (scope.owner, scope.project, scope.conversation, key)
-            ).fetchone()
-            if row is None or not scope.offline:
-                raise Failure(Code.SCOPE)
-            if row["grant_revision"] is None and row["state"] != State.ACTIVE and row["grant"] == scope.grant:
-                # Historical terminal receipts predate admission revisions.
-                return _turn(conn, scope, key)
-            if row["grant_revision"] != scope.grant:
-                raise Failure(Code.SCOPE)
-            if row["grant"] != scope.grant:
-                conn.execute("UPDATE turns SET state='failed',error=?,ended_at=CURRENT_TIMESTAMP "
-                             "WHERE id=? AND state='active'", (Code.SCOPE.value, key))
+            if not recovery.apply_final(conn, PendingSave(scope, key, state, text, error)):
                 return None
-            changed = conn.execute("UPDATE turns SET state=?,ended_at=CURRENT_TIMESTAMP,error=? "
-                                   "WHERE conversation=? AND id=? AND state='active'",
-                                   (state.value, error.value if error else None, scope.conversation, key))
-            if changed.rowcount:
-                conn.execute("UPDATE messages SET content=? WHERE turn=? AND role='assistant'", (text, key))
             return _turn(conn, scope, key)
         result = await self.db.call(finish, write=True)
         if result is None:
             # Raising inside the actor would roll back the status-only update.
             raise Failure(Code.SCOPE)
         return result
+
+    async def preserve(self, item: PendingSave) -> None:
+        await asyncio.to_thread(recovery.preserve, self.db.path, item)
+
+    async def clear_recovery(self, key: str) -> None:
+        def remove() -> None:
+            recovery.record_path(self.db.path, key).unlink(missing_ok=True)
+        await asyncio.to_thread(remove)
 
     async def history(self, scope: Scope, *, after: int = 0, limit: int = 100,
                       query: str = "") -> list[tuple[int, str, str, str]]:

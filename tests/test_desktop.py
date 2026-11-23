@@ -35,6 +35,99 @@ class DesktopTest(unittest.TestCase):
     def test_windows_grant_revocation_at_delivery(self) -> None:
         self.run_scenario(self.revocation_scenario)
 
+    def test_close_with_recovery_record_returns_recovery_disposition(self) -> None:
+        self.run_scenario(self.close_with_pending)
+
+    async def close_with_pending(self, root: Path) -> None:
+        db = Database(root / "data" / "jarvis.sqlite3")
+        await db.open()
+        try:
+            await Repositories(db).register(user_identity(), root)
+        finally:
+            await db.close()
+
+        async def generate(model: Ollama, messages: list[ChatMessage]) -> AsyncGenerator[str, None]:
+            yield "preserved reply"
+
+        window = MainWindow()
+        stop = asyncio.Event()
+        window.closing.connect(stop.set)
+        window.show()
+        with (patch.object(Ollama, "probe", autospec=True), patch.object(Ollama, "generate", generate),
+              patch.object(Repositories, "finish", side_effect=Failure(Code.STORE))):
+            app = asyncio.create_task(run_app(window, root, stop))
+            try:
+                async with asyncio.timeout(10):
+                    while not window.send.isEnabled() or not window.centralWidget().isEnabled():
+                        await asyncio.sleep(.01)
+                    window.draft.setPlainText("question")
+                    window.send.click()
+                    while not window.retry.isEnabled():
+                        await asyncio.sleep(.01)
+                    window.close()
+                    while "close again" not in window.status.text():
+                        await asyncio.sleep(.01)
+                    self.assertFalse(app.done())
+                    self.assertTrue(window.retry.isEnabled())
+                    window.close()
+                    self.assertEqual(await app, 2)
+            finally:
+                window.hide()
+        reopened = Database(db.path)
+        await reopened.open()
+        try:
+            saved = await reopened.call(lambda c: c.execute(
+                "SELECT content FROM messages WHERE role='assistant'").fetchone()[0])
+            self.assertEqual(saved, "preserved reply")
+        finally:
+            await reopened.close()
+
+    def test_close_deadline_covers_startup_and_service_cleanup(self) -> None:
+        self.run_scenario(self.close_deadline)
+
+    async def close_deadline(self, root: Path) -> None:
+        starting, release_start = asyncio.Event(), asyncio.Event()
+        closing, release_close = asyncio.Event(), asyncio.Event()
+        original_open, original_close = Database.open, Database.close
+
+        async def delayed_open(db: Database) -> None:
+            starting.set()
+            await release_start.wait()
+            await original_open(db)
+
+        async def delayed_close(db: Database) -> None:
+            closing.set()
+            await release_close.wait()
+            await original_close(db)
+
+        window = MainWindow()
+        stop = asyncio.Event()
+        with patch.object(Database, "open", delayed_open), patch.object(Database, "close", delayed_close):
+            app = asyncio.create_task(run_app(window, root, stop, shutdown_grace=.15))
+            try:
+                await asyncio.wait_for(starting.wait(), 3)
+                stop.set()
+                async with asyncio.timeout(1):
+                    while "timed out during startup" not in window.status.text():
+                        await asyncio.sleep(.01)
+                release_start.set()
+                async with asyncio.timeout(4):
+                    while not closing.is_set():
+                        stop.set()
+                        await asyncio.sleep(.02)
+                async with asyncio.timeout(1):
+                    while "timed out while closing services" not in window.status.text():
+                        await asyncio.sleep(.01)
+                self.assertFalse(app.done())
+            finally:
+                release_start.set()
+                release_close.set()
+                async with asyncio.timeout(4):
+                    while not app.done():
+                        stop.set()
+                        await asyncio.sleep(.02)
+                self.assertEqual(await app, 0)
+
     def run_scenario(self, scenario: Callable[[Path], Awaitable[None]]) -> None:
         app = QApplication.instance() or QApplication([])
         app.setQuitOnLastWindowClosed(False)
