@@ -33,6 +33,9 @@ def apply_final(conn: sqlite3.Connection, item: PendingSave) -> bool:
         raise Failure(Code.SCOPE)
     allowed = row["grant"] == scope.grant
     state, error = (item.state, item.error) if allowed else (State.FAILED, Code.SCOPE)
+    if state == State.TOKEN_LIMIT:
+        # Preserve the qualified schema-2 state constraint and completed-only context.
+        state, error = State.FAILED, Code.TOKEN_LIMIT
     changed = conn.execute("UPDATE turns SET state=?,ended_at=CURRENT_TIMESTAMP,error=? "
                            "WHERE id=? AND state='active'", (state, error, item.key))
     if allowed and changed.rowcount:

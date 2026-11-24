@@ -124,10 +124,12 @@ class Coordinator:
                 state = State.CANCELLED
             except Failure as exc:
                 error = exc.code
-                state = State.FAILED
+                state = State.TOKEN_LIMIT if error == Code.TOKEN_LIMIT else State.FAILED
             except Exception:
                 error = Code.INTERNAL
                 state = State.FAILED
+            self.log.emit(Event.FINISH, run=request, code=error, outcome=state,
+                          elapsed_ms=(self.clock()-started)*1000, digest=self.router.digest)
             try:
                 result = await self.store.finish(scope, turn.key, state, answer, error)
             except Failure as exc:
@@ -141,9 +143,7 @@ class Coordinator:
                         self.pending = item
                         self._deliver(scope, request, "unsaved", "Reply unsaved. Retry the save in this conversation.")
                 raise
-            self.log.emit(Event.FINISH, run=request, code=error, elapsed_ms=(self.clock()-started)*1000,
-                          digest=self.router.digest)
-            if error is not None:
+            if error is not None and state != State.TOKEN_LIMIT:
                 raise Failure(error)
             await self.store.validate(scope)
             self._deliver(scope, request, "saved", result.state.value)

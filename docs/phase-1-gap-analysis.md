@@ -16,16 +16,16 @@ The original Project Plan supplies the historical goals. The V2 Architecture Rev
 | 1.1.2.2 Compare Qwen builds | Missing at initial audit; now complete | See the [measured report and model decision](../outputs/qwen-msi-02/decision.md). |
 | 1.2.1.1 Project picker | Partial at initial audit; now complete | Windows tests verified distinct IDs for identically named roots, persistence after reopening SQLite, keyboard selection and alias resolution. See [project picker verification](#project-picker-verification). |
 | 1.2.1.2 Bind requests to grants | Complete | Windows acceptance tests cover dispatch, revocation during generation, status-only settlement and delivery of receipts and history. See [request grant verification](#request-grant-verification). |
-| 1.2.2.1 Create local store | Complete for M1 | Foreign-key enforcement and live WAL placement verified on Windows. Upgrade, rollback and FTS5 passed on the identified application runtime. Final distribution binary verification belongs to packaging. See [local store verification](#local-store-verification). |
+| 1.2.2.1 Create local store | Complete for M1 | Foreign-key enforcement and live WAL placement verified on Windows. Upgrade, rollback and FTS5 passed on the identified application runtime. The distribution binary passed the local-store suite in 1.3.2.1. See [local store verification](#local-store-verification). |
 | 1.2.2.2 Stream and reopen history | Complete for M1 | Windows process-restart and Qt tests cover ordered history, distinct terminal states, final-write recovery, model-independent replay and bounded close attempts. See [history verification](#history-verification). |
 | 1.3.1.1 Guard model and worker traffic | Complete for the provisioned Windows profile | The dedicated desktop and headless Ollama run under effective outbound rules. Windows acceptance covered real Qwen inference, native outbound denial, worker policy, cloud refusal and updater exclusion. See [offline traffic verification](#offline-traffic-verification). |
-| 1.3.1.2 Trace offline modes | Partial | Disconnected cold boot passed on the MSI. Closure requires the connected cold boot with offline mode enabled and verification of the pair. See [trace evidence](#cold-boot-trace-evidence). |
-| 1.3.2.1 Pin and reinstall | Partial | Python lock, project entry point, SQL package data and model digest present. No offline wheelhouse/installer, complete release manifest, clean-profile rollback rehearsal or sample upgrade proof. |
-| 1.3.2.2 Bounded diagnostics | Partial | Rotating local allowlisted events, bounded queue and dropped-event counter present. No owner-visible degraded sink, writer timings, build field or saturation/rotation evidence. |
+| 1.3.1.2 Trace offline modes | Complete | Both cold boots passed on the MSI with offline mode enabled. The Windows acceptance test verified the pair and both ETL fingerprints. See [trace evidence](#cold-boot-trace-evidence). |
+| 1.3.2.1 Pin and reinstall | Complete on the MSI | The standalone offline bundle installed into a fresh rehearsal profile, generated a local Qwen reply, and reopened it. The packaged interpreter passed the SQLite and schema rollback checks. See [release qualification](#windows-offline-release-qualification). |
+| 1.3.2.2 Bounded diagnostics | Complete on the Windows checkout | The local Qt view, terminal outcomes, privacy, queue saturation, degraded sink and rotation passed Windows acceptance. See [bounded diagnostics verification](#bounded-diagnostics-verification). |
 
 ## Completed behaviors and verification
 
-The 11-test Windows suite passed at the review point. It exercised SQLite WAL/foreign keys, invalid schema refusal, duplicate submission with a healthy model, scoped switching, cancel/stream failure, stale checkpoints, restart reconciliation, oversized input, validated settings, digest mismatch and redirect refusal. The desktop test drove PySide6 against an HTTP fixture over actual loopback, closed the application services, removed the fixture server and read the saved reply on a second launch. It did not load Qwen weights. The PRD’s A1, A6 and A9 release gates remain open. Full A2–A5 and A7 have companion work in other phases.
+The 11-test Windows suite passed at the review point. It exercised SQLite WAL/foreign keys, invalid schema refusal, duplicate submission with a healthy model, scoped switching, cancel/stream failure, stale checkpoints, restart reconciliation, oversized input, validated settings, digest mismatch and redirect refusal. The desktop test drove PySide6 against an HTTP fixture over actual loopback, closed the application services, removed the fixture server and read the saved reply on a second launch. It did not load Qwen weights. At the initial review the PRD’s A1, A6 and A9 gates were open. Full A2–A5 and A7 have companion work in other phases.
 
 ## File review and module explanations
 
@@ -35,7 +35,7 @@ Paths are relative to `src/stylus_jarvis/` unless marked as repository files.
 |---|---|---|
 | `bootstrap.py`, `__main__.py` | Windows SID, Qt lock, composition, startup/close, user commands and event dispatch | Desktop path exercised. Bootstrap also owns session and presentation logic assigned elsewhere in the blueprint. |
 | `settings.py`, `release-manifest.toml` | Immutable Pydantic preferences, atomic replace, release facts and loopback validation | Defaults and validation tested. Profile selection, repair UI and expanded manifest are pending. |
-| `runtime/diagnostics.py` | Typed events, bounded queue, rotating JSONL and memory health state | Functional infrastructure; UI does not expose log failures. |
+| `runtime/diagnostics.py` | Typed events, bounded queue, rotating JSONL and memory health state | Desktop exposes the sink status, queue depth, drops and recent events. |
 | `storage/database.py`, `storage/migrations/0001_initial.sql` | Thread-owned SQLite, migration checksum ledger, pre-upgrade snapshot, integrity checks, orphan reconciliation | Single executor serializes reads as well as writes. Measure latency before separating readers. |
 | `storage/repositories.py` | Project registration, grant checks, history, idempotent creation, checkpoints and finalization | Revocation-safe settlement verified under 1.2.1.2. Project-wide search remains open. |
 | `runtime/scheduler.py` | One inference reservation, cancellation and idle signaling | The desktop shares one close deadline across the slot, commands and resource cleanup. |
@@ -54,13 +54,13 @@ Priority reflects impact within Foundation. These are code-inspection findings u
 
 1. **High — unsaved final text on close. Resolved in 1.2.2.2.** A close attempt offers retry. A durable recovery record also allows explicit exit for recovery on restart. A memory-only reply blocks clean exit.
 2. **High — changed grant prevented terminal bookkeeping. Resolved in 1.2.1.2.** Revocation before final commit now settles the original turn in the same process. The final update preserves checkpointed text and withholds the content-bearing receipt.
-3. **High — release-wide offline trace remains open.** Item 1.3.1.1 verified the controls on the MSI. The disconnected capture passed. A1 still requires a passing connected capture and verification of the pair.
+3. **High — offline traffic evidence. Resolved for the tested Foundation profile in 1.3.1.2.** Both cold boots produced zero external events attributed to the assistant.
 4. **Medium — replay required Ollama. Resolved in 1.2.2.2.** Stored terminal submissions replay after payload and grant checks without model access.
 5. **Medium — shutdown deadline covered only the slot. Resolved in 1.2.2.2.** Startup, slot drain, desktop tasks and service cleanup share a deadline. An expired attempt reports the outstanding work and keeps the window available.
 6. **Medium — resolved data directory could differ from checked profile. Resolved in 1.2.2.1.** The database writer checks the canonical target and its Windows volume type before opening SQLite. The Windows suite covers junctions into a configured OneDrive root and denial of a remote drive type.
 7. **Medium — stale UI state can lose work or mislead.** Selection clears the draft, older command failures can update the new selection’s status, and startup failure re-enables controls without a valid runtime. Add scoped draft retention and a distinct recovery screen.
 8. **Medium — long histories still accumulate in UI memory.** Reads are paginated, but the widget displays the entire matching conversation. The same-scope refresh race was fixed and tested in 1.2.2.2. A bounded display window remains a separate large-history improvement.
-9. **Low — migration checksum depends on checkout line endings.** The ledger hashes raw SQL bytes. Enforce LF for packaged SQL or canonicalize bytes consistently before recording the first distributed migration.
+9. **Low — migration checkout bytes pinned in 1.3.2.1.** Git enforces LF for migration SQL. The release manifest pins the exact bytes used by the packaged database ledger.
 
 ## Architecture deviations and technical debt
 
@@ -68,7 +68,7 @@ Session ownership lives across bootstrap, repository and coordinator rather than
 
 The database actor has one connection and an unbounded executor work queue. Per-frame authorization and full reply-prefix concatenation each add overhead. Profile sustained streams, large history and mixed workloads before changing these paths. The diagnostics schema and failure envelope need contract tests. An abrupt Windows process exit is covered. Physical disk exhaustion, suspend/resume and callbacks after native window destruction remain open operational tests.
 
-## Next implementation increment
+## Implementation increment at the initial audit
 
 Complete backlog task **1.1.1 Record the target environment**, in dependency order: capture a reproducible Windows hardware baseline, then freeze the reference fixtures. Preserve the existing runtime files for this increment. Next sequential task is **1.1.2 Qualify the inference profile**. Qualification requires provisioned assets and actual target-laptop measurements.
 
@@ -123,7 +123,7 @@ The full Windows suite recorded **40 passes and one skip** at grant closure. All
 
 All nine local-store tests passed. The full Windows suite recorded 49 passes and one skip for the existing picker symlink test. Repeat the store checks with `.venv\Scripts\python.exe -B -m unittest discover -s tests -p test_local_store.py -v`.
 
-The repository has no standalone desktop distribution yet. Item 1.3.2.1 owns the offline release bundle. Run the FTS5 test with its packaged interpreter to verify the shipped binary at that gate.
+The packaged CPython interpreter passed all nine Windows local-store tests, including FTS5, in 1.3.2.1.
 
 ## History verification
 
@@ -148,17 +148,17 @@ The full Windows suite recorded **59 passes and one skip** at Feature 1.2 closur
 
 The full Windows suite recorded **68 passes and one skip**. All nine offline acceptance tests ran, including the opt-in live model and firewall test. The existing directory-symlink test skipped because Windows denied link creation.
 
-**1.3.1.2 Trace offline modes is next.** The remaining release gate is the connected cold boot with offline mode selected and verification of the pair. Independently running Windows services and the user's separate Ollama installation must be distinguished in that trace. [Windows acceptance tests](../tests/test_offline_policy.py) · [Launch, repeat acceptance and remove rules](windows-offline-profile.md)
+**1.3.1.2 Trace offline modes is complete.** Packaging qualification followed in 1.3.2.1. [Windows acceptance tests](../tests/test_offline_policy.py) · [Launch, repeat acceptance and remove rules](windows-offline-profile.md)
 
 ## Cold-boot trace evidence
 
-**1.3.1.2 remains open.** On 23 November 2026, a connected MSI rehearsal exercised a real completed Qt/Qwen turn with offline mode enabled. Kernel-Boot reported type 2. During the measured turn, ETW attributed 27 socket events, 256 transport events and four local name-resolution events to the assistant stack. All were loopback. The ETL header reported zero lost events and zero lost buffers. The reserved-name observer control was visible separately. Some background traffic lacked process identity in this first capture. The report preserves that uncertainty. [Measured rehearsal](evidence/1.3.1.2/rehearsal.json)
+**Initial rehearsal.** On 23 November 2026, a connected MSI rehearsal exercised a real completed Qt/Qwen turn with offline mode enabled. Kernel-Boot reported type 2. During the measured turn, ETW attributed 27 socket events, 256 transport events and four local name-resolution events to the assistant stack. All were loopback. The ETL header reported zero lost events and zero lost buffers. The reserved-name observer control was visible separately. Some background traffic lacked process identity in this first capture. The report preserves that uncertainty. [Measured rehearsal](evidence/1.3.1.2/rehearsal.json)
 
 The collector now takes a process snapshot before each workload in addition to recording process lifetimes. A release verdict requires two distinct full boots, correct network conditions and complete attribution of external activity. The synthetic classifier tests cover PID reuse, unrelated Ollama processes, blocked attempts, DNS, loss, missing activity, network changes and duplicate boots. [Windows capture procedure](windows-cold-boot-trace.md) · [Acceptance tests](../tests/test_offline_trace.py)
 
 **Disconnected capture `cold-disconnected-01` is inconclusive.** Windows recorded a full boot and a completed offline turn. The original appended ETL reused the previous boot's clock origin. Reanalysis using 786 native process-start timestamps recovered the desktop, launcher, model server, runner, DNS and socket controls. All 29 attributed assistant socket events and four DNS events were local. The trace contained no independent kernel transport events during the workload. The saved default-route counts also lacked interface state. Neither fact can be recovered by repeating classification. [Disconnected reanalysis](evidence/1.3.1.2/disconnected-01-reanalysis.json)
 
-**The replacement collector is ready for cold-boot acceptance.** A fresh WPR profile records process and socket events in nonpaged buffers and independently observes the model connection in the TCP/IP driver. Network snapshots record each default route's interface state. MSI rehearsal `repair-rehearsal-05` recovered all eight controls, with 37 assistant socket events, 37 transport events and four DNS events, all loopback. Both source loggers reported zero lost events. The boot registration and cancellation check also succeeded. Nine classifier tests passed. The native two-boot test still awaits passing disconnected and connected captures. [Collector rehearsal](evidence/1.3.1.2/collector-rehearsal.json) · [Exact execution steps](windows-cold-boot-trace.md)
+**The replacement collector is ready for cold-boot acceptance.** A fresh WPR profile records process and socket events in nonpaged buffers and independently observes the model connection in the TCP/IP driver. Network snapshots record each default route's interface state. MSI rehearsal `repair-rehearsal-05` recovered all eight controls, with 37 assistant socket events, 37 transport events and four DNS events, all loopback. Both source loggers reported zero lost events. The boot registration and cancellation check also succeeded. Nine classifier tests passed. At this point the native two-boot test still needed both captures. [Collector rehearsal](evidence/1.3.1.2/collector-rehearsal.json) · [Exact execution steps](windows-cold-boot-trace.md)
 
 **Disconnected attempt `cold-disconnected-02` stopped before the workload.** The network snapshot showed no active physical links. Kernel-Boot record 75341 reported type 1 and the kernel boot time matched the Arm snapshot. Run rejected the hybrid boot. The subsequent Finish cancelled the pending recording. There is no workload journal or ETL for this attempt. Finish now checks the completed workload and final snapshot before stopping the recorder. The next planned pair is `cold-disconnected-04` and `cold-connected-01`.
 
@@ -166,4 +166,28 @@ The collector now takes a process snapshot before each workload in addition to r
 
 **Disconnected capture `cold-disconnected-05` is inconclusive.** The recovered instance-named WPR output showed all eight controls, zero lost events and zero attributed external assistant events. All three snapshots were disconnected. Windows WLAN history recorded association at 22:24:45 and disconnection at 22:26:27 (Singapore time), before the workload began at 22:26:37. The profile transition was the only issue. Acceptance still requires a continuously disconnected boot and a separate connected boot with offline mode selected. [Recovered report](evidence/1.3.1.2/disconnected-05.json)
 
-**Disconnected capture `cold-disconnected-06` passed.** The original report left one external DNS lookup unattributed. The raw ETL places DNS Client event 3006 at 14:48:52.099 UTC (PID 18560, thread 18632), after the recorded start of the separate ChatGPT.exe process at 14:48:30.091 UTC. The XML mixed +07:59 and +08:00 offsets, and applying the header correction uniformly moved this event back one minute. Reclassification of the same fingerprinted ETL with per-record offset handling recovered the owner. All eight controls were present. The 28 socket, 28 transport and four DNS events attributed to the assistant were loopback. No events or buffers were lost. The connected cold boot and native pair check remain pending. [Passing disconnected report](evidence/1.3.1.2/disconnected-06.json)
+**Disconnected capture `cold-disconnected-06` passed.** The original report left one external DNS lookup unattributed. The raw ETL places DNS Client event 3006 at 14:48:52.099 UTC (PID 18560, thread 18632), after the recorded start of the separate ChatGPT.exe process at 14:48:30.091 UTC. The XML mixed +07:59 and +08:00 offsets, and applying the header correction uniformly moved this event back one minute. Reclassification of the same fingerprinted ETL with per-record offset handling recovered the owner. All eight controls were present. The 28 socket, 28 transport and four DNS events attributed to the assistant were loopback. No events or buffers were lost. This completed the disconnected half of the pair. [Passing disconnected report](evidence/1.3.1.2/disconnected-06.json)
+
+**1.3.1.2 closed on 23 November 2026.** Windows had internet access during `cold-connected-01` while the completed desktop workload used offline mode. All 40 socket, 40 transport and four DNS events attributed to the assistant were loopback. Both captures recorded all eight positive controls, zero external assistant events and zero lost events or buffers. The native acceptance test reclassified both recordings, checked their ETL fingerprints and verified distinct full boots on the same MSI. All 12 offline trace tests passed with native acceptance enabled. [Connected report](evidence/1.3.1.2/connected-01.json) · [Disconnected report](evidence/1.3.1.2/disconnected-06.json)
+
+## Windows offline release qualification
+
+**1.3.2.1 closed on the MSI Thin A15 on 24 November 2026.** The 8,202,771,648-byte Foundation bundle installs build 0.1.0, CPython 3.12.13, SQLite 3.50.4, schema 2, headless Ollama 0.40.17 and Qwen 3 4B. It includes 19 wheels and the 11 verified M0 assets. The manifest identifies every payload by SHA-256. [Release manifest](evidence/1.3.2.1/bundle.json) · [Offline installation and rollback](windows-foundation-release.md)
+
+The Windows account used a fresh assistant profile with separate executable paths and outbound firewall rules. Installation read local wheels with the package index disabled. The Qt desktop created a sample project, completed a Qwen conversation, exited, and reopened its saved reply in a second process. The desktop and model ran with their outbound blocks active and without cloud credentials. The host network remained available during this packaging rehearsal.
+
+The installed interpreter passed all nine Windows local-store tests, including WAL, FTS5, failed migration rollback and backup restoration. The earlier application revision f6c7aad created a schema-1 project and completed turn. The installed release opened them under schema 2. After restoring the pre-upgrade database to a separate directory, the earlier revision reopened the same project, conversation ID and ordered messages. The Windows repository suite ran 81 tests with 79 passes and two skips. The next sequential item is **1.3.2.2 Record bounded diagnostics**.
+
+## Bounded diagnostics verification
+
+Backlog 1.3.2.2 is complete for the Windows checkout as of 2026-11-24. The local PySide6 diagnostics view showed the release manifest build and pinned model digest. SQLite writer events included executor wait and transaction duration. Terminal-frame fixtures exercised normal stop, explicit length, reasonless budget exhaustion at 96 tokens and provider failure. A separate cancellation test preserved the partial reply during saturation. The original packaged reply has no saved stop metadata to reclassify.
+
+| Windows acceptance check | Observed result |
+|---|---|
+| Queue and recent view | A stalled writer with one in-flight entry accepted 256 queued events. Ten subsequent events were dropped. The recent view retained 32 entries. |
+| Write failure and cancellation | Counting saturation, the failed in-flight write, the queued entries and the final rejected event produced 270 drops and an empty queue. The cancelled reply reopened from SQLite. |
+| Owner visibility | With the log directory obstructed, the desktop showed degraded status. Stop saved a cancelled turn and its outcome appeared in the local view. |
+| Rotation and privacy | At a test threshold of 1,400 bytes, the active file and both backups stayed within the limit. The scan found no seeded private markers. Production uses 2 MiB per file. |
+| Regression run | The Windows checkout ran 84 tests in 31.827 seconds, with 82 passes and two skips. The skipped checks required the opt-in native firewall/model runtime and permission to create a directory symlink. All diagnostic acceptance checks ran. |
+
+The packaging qualification above applies to the previously built bundle. This run exercised the updated checkout with deterministic provider frames and a real SQLite database. [Operator guide and repeatable commands](windows-bounded-diagnostics.md)

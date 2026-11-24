@@ -3,6 +3,7 @@ import asyncio
 import hashlib
 import sqlite3
 import stat
+import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from importlib.resources import files
@@ -36,8 +37,9 @@ def _prepare_path(requested: Path) -> Path:
 
 
 class Database:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, *, writer_timing: Callable[[float, float], None] | None = None) -> None:
         self.path = path
+        self._writer_timing = writer_timing
         self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="jarvis-sqlite")
         self._connection: sqlite3.Connection | None = None
         self._closing = False
@@ -99,7 +101,10 @@ class Database:
         if self._closing:
             raise Failure(Code.STORE)
 
+        queued = time.monotonic()
+
         def execute() -> T:
+            started = time.monotonic()
             conn = self._connection
             if conn is None:
                 raise Failure(Code.STORE)
@@ -115,6 +120,13 @@ class Database:
             except BaseException:
                 conn.rollback()
                 raise
+            finally:
+                if write and self._writer_timing:
+                    try:
+                        self._writer_timing((started - queued) * 1000, (time.monotonic() - started) * 1000)
+                    except Exception:
+                        # An observer must never change a committed receipt or mask a rollback.
+                        pass
 
         return await asyncio.get_running_loop().run_in_executor(self._pool, execute)
 

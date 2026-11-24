@@ -16,6 +16,7 @@ class Code(StrEnum):
     OFFLINE = "offline_policy"
     DIGEST = "model_digest"
     STREAM = "invalid_stream"
+    TOKEN_LIMIT = "token_limit"
     INTERNAL = "internal"
 
 
@@ -31,6 +32,7 @@ ACTIONS = {
     Code.MODEL: "Start local Ollama and provision the pinned Qwen model, then recheck.",
     Code.DIGEST: "Provision the model revision specified in the release manifest.",
     Code.STREAM: "The local stream ended incorrectly. Review the partial answer before retrying.",
+    Code.TOKEN_LIMIT: "The output limit was reached. The reply may be incomplete.",
     Code.INTERNAL: "Reopen the conversation and check its saved state.",
 }
 
@@ -46,6 +48,7 @@ class Failure(Exception):
 class State(StrEnum):
     ACTIVE = "active"
     COMPLETED = "completed"
+    TOKEN_LIMIT = "token_limit"
     CANCELLED = "cancelled"
     FAILED = "failed"
     INTERRUPTED = "interrupted"

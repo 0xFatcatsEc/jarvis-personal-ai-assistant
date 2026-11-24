@@ -100,6 +100,13 @@ class Ollama:
                         if content:
                             yield content
                         if frame["done"]:
+                            reason = frame.get("done_reason")
+                            count = frame.get("eval_count")
+                            if reason == "length" or (reason in (None, "") and
+                                    type(count) is int and count >= self.settings.output):
+                                raise Failure(Code.TOKEN_LIMIT)
+                            if reason not in (None, "", "stop"):
+                                raise Failure(Code.STREAM)
                             return
                     if len(buffer) > 1024*1024:
                         raise Failure(Code.STREAM)

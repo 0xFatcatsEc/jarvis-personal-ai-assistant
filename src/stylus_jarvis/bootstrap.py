@@ -7,12 +7,12 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from PySide6.QtCore import QLockFile
+from PySide6.QtCore import QLockFile, QTimer
 from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import QApplication, QComboBox, QFileDialog, QMessageBox
 from qasync import QEventLoop
 
-from .contracts.messages import Code, Failure, RuntimeEvent, Scope
+from .contracts.messages import ACTIONS, Code, Failure, RuntimeEvent, Scope, State
 from .inference.ollama import Ollama
 from .inference.router import Router
 from .runtime.coordinator import Coordinator
@@ -213,7 +213,8 @@ class Desktop:
                 turn = await self.core.submit(scope, request, text)
                 if scope == self.core.selection and text == self.view.draft.toPlainText():
                     self.view.draft.clear()
-                    self.view.status.setText(f"Offline · {turn.state.value}")
+                    status = ACTIONS[Code.TOKEN_LIMIT] if turn.state == State.TOKEN_LIMIT else turn.state.value
+                    self.view.status.setText(f"Offline · {status}")
             finally:
                 self.sending = False
                 self.streaming_scope = None
@@ -257,7 +258,21 @@ class Desktop:
 
 async def run_app(view: MainWindow, root: Path, exiting: asyncio.Event, *, shutdown_grace: float = 5.0) -> int:
     log = Diagnostics(root / "logs")
-    db = Database(root / "data" / "jarvis.sqlite3")
+    db = Database(root / "data" / "jarvis.sqlite3", writer_timing=log.writer)
+    def refresh_diagnostics() -> None:
+        health, recent = log.snapshot()
+        view.diagnostic_toggle.setText(health)
+        if view.diagnostic_toggle.isChecked():
+            content = "\n".join(recent)
+            if content != view.diagnostic_view.toPlainText():
+                view.diagnostic_view.setPlainText(content)
+                view.diagnostic_view.moveCursor(QTextCursor.MoveOperation.End)
+
+    timer = QTimer(view)
+    timer.timeout.connect(refresh_diagnostics)
+    view.diagnostic_toggle.toggled.connect(refresh_diagnostics)
+    refresh_diagnostics()
+    timer.start(500)
     model: Ollama | None = None
     desktop: Desktop | None = None
     stopping = False
@@ -265,8 +280,9 @@ async def run_app(view: MainWindow, root: Path, exiting: asyncio.Event, *, shutd
     async def startup() -> int:
         nonlocal model, desktop
         try:
-            log.emit(Event.START)
             settings, manifest = await asyncio.to_thread(load, root)
+            log.identify(manifest.build)
+            log.emit(Event.START, digest=manifest.digest)
             await db.open()
             store = Repositories(db)
             model = Ollama(settings, manifest)
@@ -320,6 +336,7 @@ async def run_app(view: MainWindow, root: Path, exiting: asyncio.Event, *, shutd
             cleanup = asyncio.create_task(close_services())
         done, _ = await asyncio.wait({cleanup}, timeout=max(0., deadline - loop.time()))
         if done:
+            timer.stop()
             cleanup.result()
             return 2 if desktop and desktop.core.pending is not None else result
         view.status.setText("Close timed out while closing services. Close again to check.")

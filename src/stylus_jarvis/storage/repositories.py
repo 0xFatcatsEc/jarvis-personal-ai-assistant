@@ -11,6 +11,9 @@ from .database import Database
 from . import recovery
 
 
+_DISPLAY_STATE = "CASE WHEN t.state='failed' AND t.error='token_limit' THEN 'token_limit' ELSE t.state END"
+
+
 def _authorize(conn: sqlite3.Connection, scope: Scope) -> None:
     row = conn.execute(
         "SELECT p.grant FROM projects p JOIN conversations c ON c.project=p.id "
@@ -22,7 +25,7 @@ def _authorize(conn: sqlite3.Connection, scope: Scope) -> None:
 
 def _turn(conn: sqlite3.Connection, scope: Scope, key: str) -> Turn:
     row = conn.execute(
-        "SELECT t.id,u.content,a.content,t.state FROM turns t "
+        f"SELECT t.id,u.content,a.content,{_DISPLAY_STATE} FROM turns t "
         "JOIN messages u ON u.turn=t.id AND u.role='user' "
         "JOIN messages a ON a.turn=t.id AND a.role='assistant' "
         "WHERE t.conversation=? AND t.id=?", (scope.conversation, key)
@@ -160,7 +163,7 @@ class Repositories:
         def fetch(conn: sqlite3.Connection) -> list[tuple[int, str, str, str]]:
             _authorize(conn, scope)
             return [tuple(r) for r in conn.execute(
-                "SELECT m.seq,m.role,m.content,t.state FROM messages m JOIN turns t ON t.id=m.turn "
+                f"SELECT m.seq,m.role,m.content,{_DISPLAY_STATE} FROM messages m JOIN turns t ON t.id=m.turn "
                 "WHERE m.conversation=? AND m.seq>? AND instr(lower(m.content),lower(?))>0 ORDER BY m.seq LIMIT ?",
                 (scope.conversation, after, query, min(max(1, limit), 500)))]
         return await self.db.call(fetch)

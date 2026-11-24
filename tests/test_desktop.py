@@ -35,6 +35,47 @@ class DesktopTest(unittest.TestCase):
     def test_windows_grant_revocation_at_delivery(self) -> None:
         self.run_scenario(self.revocation_scenario)
 
+    def test_degraded_diagnostics_and_desktop_stop(self) -> None:
+        self.run_scenario(self.degraded_stop)
+
+    async def degraded_stop(self, root: Path) -> None:
+        (root / "logs").write_bytes(b"directory unavailable")
+        db = Database(root / "data" / "jarvis.sqlite3")
+        await db.open()
+        try:
+            await Repositories(db).register(user_identity(), root)
+        finally:
+            await db.close()
+        active = asyncio.Event()
+
+        async def generate(model: Ollama, messages: list[ChatMessage]) -> AsyncGenerator[str, None]:
+            yield "private prefix"
+            active.set()
+            await asyncio.Event().wait()
+
+        window = MainWindow()
+        window.show()
+        stop = asyncio.Event()
+        with patch.object(Ollama, "probe", autospec=True), patch.object(Ollama, "generate", generate):
+            app = asyncio.create_task(run_app(window, root, stop))
+            try:
+                async with asyncio.timeout(10):
+                    while not window.send.isEnabled() or "degraded" not in window.diagnostic_toggle.text():
+                        await asyncio.sleep(.02)
+                    window.draft.setPlainText("private prompt")
+                    window.send.click()
+                    await active.wait()
+                    window.stop.click()
+                    while "assistant [cancelled]" not in window.history.toPlainText():
+                        await asyncio.sleep(.02)
+                    window.diagnostic_toggle.click()
+                    self.assertIn('"outcome":"cancelled"', window.diagnostic_view.toPlainText())
+                    self.assertNotIn("private", window.diagnostic_view.toPlainText())
+            finally:
+                stop.set()
+                await asyncio.wait_for(app, 8)
+                window.hide()
+
     def test_close_with_recovery_record_returns_recovery_disposition(self) -> None:
         self.run_scenario(self.close_with_pending)
 
@@ -245,6 +286,13 @@ class DesktopTest(unittest.TestCase):
                 while "assistant [completed]" not in window.history.toPlainText():
                     await asyncio.sleep(0.02)
                 self.assertIn("café!", window.history.toPlainText())
+                window.diagnostic_toggle.click()
+                diagnostic_text = window.diagnostic_view.toPlainText()
+                self.assertIn('"event":"sqlite_writer"', diagnostic_text)
+                self.assertIn(manifest.digest, diagnostic_text)
+                self.assertIn(manifest.build, diagnostic_text)
+                self.assertNotIn("Explain this project", diagnostic_text)
+                self.assertNotIn("café", diagnostic_text)
                 self.assertEqual(requests.count("/api/chat"), 1)
         finally:
             stop.set()

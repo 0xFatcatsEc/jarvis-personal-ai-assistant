@@ -49,6 +49,17 @@ class MainWindow(QMainWindow):
         for button in (self.send, self.stop, self.probe, self.retry):
             buttons.addWidget(button)
         layout.addLayout(buttons)
+        self.diagnostic_toggle = QPushButton("Local diagnostics")
+        self.diagnostic_toggle.setAccessibleName("Local diagnostics")
+        self.diagnostic_toggle.setCheckable(True)
+        self.statusBar().addPermanentWidget(self.diagnostic_toggle)
+        self.diagnostic_view = QPlainTextEdit()
+        self.diagnostic_view.setAccessibleName("Recent diagnostic events")
+        self.diagnostic_view.setReadOnly(True)
+        self.diagnostic_view.setMaximumHeight(130)
+        self.diagnostic_view.hide()
+        layout.addWidget(self.diagnostic_view)
+        self.diagnostic_toggle.toggled.connect(self.diagnostic_view.setVisible)
         panel.setEnabled(False)
 
     def closeEvent(self, event: QCloseEvent) -> None:

@@ -9,6 +9,10 @@ param(
 $ErrorActionPreference = 'Stop'
 if (-not [ipaddress]::IsLoopback($ListenAddress)) { throw 'The listener must be loopback.' }
 $profileRoot = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'StylusJarvis'
+$rehearsalRoot = "$profileRoot-Rehearsal"
+if ([IO.Path]::GetFullPath($PythonImage) -eq (Join-Path $rehearsalRoot 'runtime\python\python.exe')) {
+    $profileRoot = $rehearsalRoot
+}
 $runtime = Join-Path $profileRoot 'runtime\ollama'
 $python = (Get-Item -LiteralPath $PythonImage).FullName
 if ($python -ne (Join-Path $profileRoot 'runtime\python\python.exe')) {

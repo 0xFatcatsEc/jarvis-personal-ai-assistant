@@ -1,0 +1,255 @@
+{
+  "run": "cold-connected-01",
+  "mode": "Connected",
+  "bootUtc": "2026-11-23T15:24:15.5000000Z",
+  "bootRecord": 76068,
+  "bootType": 0,
+  "start": "2026-11-23T15:27:29.593881+00:00",
+  "end": "2026-11-23T15:28:14.088223+00:00",
+  "internet": true,
+  "status": "pass",
+  "issues": [],
+  "observedAssistantExternalEvents": 0,
+  "counts": {
+    "assistant": {
+      "socket.loopback": 40,
+      "transport.loopback": 40,
+      "dns.loopback": 4
+    },
+    "background": {
+      "dns.external": 3576,
+      "socket.external": 1489,
+      "socket.loopback": 415,
+      "dns.loopback": 404,
+      "transport.loopback": 193,
+      "dns.unknown": 2,
+      "transport.external": 74
+    },
+    "unattributed": {}
+  },
+  "controls": [
+    "desktop",
+    "dns",
+    "launcher",
+    "llama-server.exe",
+    "ollama.exe",
+    "socket",
+    "transport",
+    "udp"
+  ],
+  "workloadProviderEvents": {
+    "Microsoft-Windows-Winsock-AFD": 687,
+    "Microsoft-Windows-TCPIP": 101,
+    "Microsoft-Windows-Kernel-Process": 129,
+    "Microsoft-Windows-DNS-Client": 174
+  },
+  "clockCalibration": {
+    "legacyPostBootStartAnchors": 0,
+    "legacyPostBootShiftSeconds": null
+  },
+  "zeroExternalVerified": true,
+  "processes": [
+    {
+      "pid": 4232,
+      "parent": 16088,
+      "image": "powershell.exe"
+    },
+    {
+      "pid": 20576,
+      "parent": 4232,
+      "image": "ollama.exe"
+    },
+    {
+      "pid": 20648,
+      "parent": 16088,
+      "image": "python.exe"
+    },
+    {
+      "pid": 3488,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 18352,
+      "parent": 20648,
+      "image": "powershell.exe"
+    },
+    {
+      "pid": 20812,
+      "parent": 18352,
+      "image": "conhost.exe"
+    },
+    {
+      "pid": 19624,
+      "parent": 20648,
+      "image": "whoami.exe"
+    },
+    {
+      "pid": 12400,
+      "parent": 19624,
+      "image": "conhost.exe"
+    },
+    {
+      "pid": 14420,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 19212,
+      "parent": 20576,
+      "image": "ollama.exe"
+    },
+    {
+      "pid": 4076,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 4052,
+      "parent": 20648,
+      "image": "whoami.exe"
+    },
+    {
+      "pid": 4028,
+      "parent": 4052,
+      "image": "conhost.exe"
+    },
+    {
+      "pid": 6516,
+      "parent": 20648,
+      "image": "powershell.exe"
+    },
+    {
+      "pid": 14780,
+      "parent": 6516,
+      "image": "conhost.exe"
+    },
+    {
+      "pid": 5480,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 17412,
+      "parent": 20576,
+      "image": "ollama.exe"
+    },
+    {
+      "pid": 21416,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 14428,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 18704,
+      "parent": 20576,
+      "image": "ollama.exe"
+    },
+    {
+      "pid": 19788,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 14108,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 19628,
+      "parent": 20576,
+      "image": "ollama.exe"
+    },
+    {
+      "pid": 10716,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 14416,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 5416,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 14420,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 9208,
+      "parent": 20576,
+      "image": "ollama.exe"
+    },
+    {
+      "pid": 14760,
+      "parent": 20576,
+      "image": "ollama.exe"
+    },
+    {
+      "pid": 12580,
+      "parent": 20648,
+      "image": "powershell.exe"
+    },
+    {
+      "pid": 15144,
+      "parent": 12580,
+      "image": "conhost.exe"
+    },
+    {
+      "pid": 17680,
+      "parent": 20648,
+      "image": "powershell.exe"
+    },
+    {
+      "pid": 7932,
+      "parent": 17680,
+      "image": "conhost.exe"
+    },
+    {
+      "pid": 21312,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 8588,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 12360,
+      "parent": 20576,
+      "image": "ollama.exe"
+    },
+    {
+      "pid": 8760,
+      "parent": 20576,
+      "image": "llama-server.exe"
+    },
+    {
+      "pid": 14780,
+      "parent": 8760,
+      "image": "conhost.exe"
+    }
+  ],
+  "findings": [],
+  "eventsLost": [
+    0
+  ],
+  "buffersLost": [
+    0
+  ],
+  "sourceEventsLost": {
+    "WPR_initiated_StylusTrace-cold-connected-01_boottr_WPR System Collector": 0,
+    "WPR_initiated_StylusTrace-cold-connected-01_boottr_StylusEvents": 0
+  },
+  "etlSha256": "e28c168f5dfb0efb79a4c8cdfaa31761f53aed5100b20248d68a3ea96542f5f2"
+}

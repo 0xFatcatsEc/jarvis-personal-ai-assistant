@@ -2,6 +2,7 @@
 import ipaddress
 import os
 import stat
+import sys
 import tempfile
 import tomllib
 from importlib.resources import files
@@ -45,6 +46,9 @@ def profile_path() -> Path:
     raw = os.getenv("LOCALAPPDATA")
     if not raw or not Path(raw).is_absolute():
         raise Failure(Code.SETTINGS, field="LOCALAPPDATA")
+    rehearsal = Path(raw) / "StylusJarvis-Rehearsal"
+    if Path(sys.executable) == rehearsal / "runtime/python/python.exe":
+        return local_data_path(rehearsal)
     return local_data_path(Path(raw) / "StylusJarvis")
 
 
