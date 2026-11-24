@@ -49,6 +49,8 @@ src/stylus_jarvis/ui/review.py
 src/stylus_jarvis/voice/__init__.py
 src/stylus_jarvis/voice/capture.py
 src/stylus_jarvis/voice/controller.py
+src/stylus_jarvis/voice/whisper.py
+src/stylus_jarvis/voice/whisper_worker.py
 tests/test_asset_provisioning.py
 tests/test_bounded_diagnostics.py
 tests/test_cited_context.py
@@ -67,6 +69,7 @@ tests/test_project_picker.py
 tests/test_request_grants.py
 tests/test_scoped_index.py
 tests/test_snapshots.py
+tests/test_source_revisions.py
 tests/test_staged_restore.py
 tests/test_voice_capture.py
-tests/test_source_revisions.py
+tests/test_whisper.py

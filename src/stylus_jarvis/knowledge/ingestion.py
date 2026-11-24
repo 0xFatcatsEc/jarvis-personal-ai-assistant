@@ -2,7 +2,7 @@
 import hashlib
 import os
 import stat
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -66,6 +66,14 @@ def approved_stream(root: Path, selected: Path) -> Iterator[tuple[str, BinaryIO,
         raise Failure(Code.SCOPE) from exc
 
 
-def fingerprint(root: Path, selected: Path) -> tuple[str, str, int]:
+def fingerprint(root: Path, selected: Path, checkpoint: Callable[[], None] | None = None) -> tuple[str, str, int]:
     with approved_stream(root, selected) as (relative, stream, size):
-        return relative, hashlib.file_digest(stream, "sha256").hexdigest(), size
+        if checkpoint is None:
+            return relative, hashlib.file_digest(stream, "sha256").hexdigest(), size
+        digest = hashlib.sha256()
+        while True:
+            checkpoint()
+            chunk = stream.read(256 * 1024)
+            if not chunk:
+                return relative, digest.hexdigest(), size
+            digest.update(chunk)

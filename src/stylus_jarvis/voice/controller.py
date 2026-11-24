@@ -11,12 +11,14 @@ from .capture import MAX_SECONDS, MicrophoneCapture
 class VoiceControls(QWidget):
     capture_ready = Signal(object)
     capture_interrupted = Signal()
+    capture_state_changed = Signal()
     KEYS = (Qt.Key.Key_F8, Qt.Key.Key_F9, Qt.Key.Key_F12)
 
     def __init__(self, parent: QWidget, capture: MicrophoneCapture | None = None) -> None:
         super().__init__(parent)
         self._capture = capture if capture is not None else MicrophoneCapture(self)
         self._trigger: str | None = None
+        self.playing = False
         self._device_id: bytes | None = None
         self._fallback_message: str | None = None
         self._trace_enabled = os.environ.get("STYLUS_VOICE_DIAGNOSTICS") == "1"
@@ -84,6 +86,9 @@ class VoiceControls(QWidget):
 
     def _begin(self, trigger: str) -> None:
         self._trace(f"{trigger} pressed")
+        if self.playing:
+            self._status("Playback active. Stop speech before recording.")
+            return
         selected = self.microphone.currentIndex()
         if self._trigger is not None or selected < 0 or not self.isEnabled():
             return
@@ -97,6 +102,7 @@ class VoiceControls(QWidget):
         self.hotkey.setEnabled(False)
         self._status("● Recording…")
         self._timer.start(MAX_SECONDS * 1000)
+        self.capture_state_changed.emit()
 
     def _end(self, trigger: str | None, status: str = "Recording stopped", *, discard: bool = False) -> None:
         if self._trigger is None or trigger != self._trigger:
@@ -114,6 +120,7 @@ class VoiceControls(QWidget):
         self._status(status)
         if clip is not None:
             self.capture_ready.emit(clip)
+        self.capture_state_changed.emit()
 
     def _failed(self) -> None:
         if self._trigger is not None:
@@ -129,6 +136,15 @@ class VoiceControls(QWidget):
 
     def cancel(self) -> None:
         self._end(self._trigger, "Recording cancelled", discard=True)
+
+    @property
+    def capturing(self) -> bool:
+        return self._trigger is not None
+
+    def set_playback(self, playing: bool) -> None:
+        self.playing = playing
+        if not playing:
+            self.refresh()
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         kind = event.type()

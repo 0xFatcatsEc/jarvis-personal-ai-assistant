@@ -2,6 +2,7 @@
 import asyncio
 import os
 import sqlite3
+from collections.abc import Callable
 from dataclasses import astuple, dataclass
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -93,14 +94,18 @@ class Repositories:
         return await self.db.call(lambda c: [(r[0], r[1]) for r in c.execute(
             "SELECT id,root FROM projects WHERE owner=? ORDER BY root", (owner,))])
 
-    async def approve_source(self, scope: Scope, selected: Path) -> SourceRevision:
+    async def approve_source(self, scope: Scope, selected: Path, *,
+                             checkpoint: Callable[[], None] | None = None) -> SourceRevision:
         """Register the current content of a file explicitly selected by the owner."""
         def approved_root(conn: sqlite3.Connection) -> Path:
             _authorize(conn, scope)
             return Path(conn.execute("SELECT root FROM projects WHERE id=?", (scope.project,)).fetchone()[0])
 
         root = await self.db.call(approved_root)
-        relative, digest, size = await asyncio.to_thread(fingerprint, root, selected)
+        args = (root, selected) if checkpoint is None else (root, selected, checkpoint)
+        relative, digest, size = await asyncio.to_thread(fingerprint, *args)
+        if checkpoint is not None:
+            await asyncio.to_thread(checkpoint)
 
         def record(conn: sqlite3.Connection) -> SourceRevision:
             _authorize(conn, scope)
@@ -144,7 +149,8 @@ class Repositories:
             args.append(locator)
         return [Locator(*row[:-1], bool(row[-1])) for row in conn.execute(sql + " ORDER BY l.page,l.start", args)]
 
-    async def extract_locators(self, scope: Scope, source: str, revision: str) -> list[Locator]:
+    async def extract_locators(self, scope: Scope, source: str, revision: str, *,
+                               checkpoint: Callable[[], None] | None = None) -> list[Locator]:
         approved = await self.source_revision(scope, source, revision)
 
         def prepare(conn: sqlite3.Connection) -> tuple[Path, list[Locator]]:
@@ -154,7 +160,10 @@ class Repositories:
 
         root, records = await self.db.call(prepare)
         if not records:
-            extracted = await asyncio.to_thread(extract, root, approved)
+            args = (root, approved) if checkpoint is None else (root, approved, checkpoint)
+            extracted = await asyncio.to_thread(extract, *args)
+            if checkpoint is not None:
+                await asyncio.to_thread(checkpoint)
 
             def publish(conn: sqlite3.Connection) -> list[Locator]:
                 existing = self._locators(conn, scope, source, revision)
@@ -175,6 +184,14 @@ class Repositories:
             raise Failure(Code.SCOPE)
         await self.validate(scope)
         return records[0]
+
+    async def active_revision(self, scope: Scope, source: str) -> str | None:
+        def lookup(conn: sqlite3.Connection) -> str | None:
+            _authorize(conn, scope)
+            row = conn.execute("SELECT a.revision FROM active_evidence a JOIN sources s ON s.id=a.source "
+                               "WHERE s.project=? AND s.id=?", (scope.project, source)).fetchone()
+            return str(row[0]) if row else None
+        return await self.db.call(lookup)
 
     async def publish_revision(self, scope: Scope, source: str, revision: str, *,
                                replaces: tuple[str, str] | None = None) -> None:

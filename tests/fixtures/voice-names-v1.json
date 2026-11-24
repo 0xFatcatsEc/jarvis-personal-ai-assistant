@@ -1,0 +1,5 @@
+[
+  {"id": "N01", "sentence": "Jarvis.", "terms": ["jarvis"]},
+  {"id": "N02", "sentence": "Jarvis, open my notes.", "terms": ["jarvis", "open my notes"]},
+  {"id": "N03", "sentence": "Jerry, please.", "terms": ["jerry", "please"]}
+]

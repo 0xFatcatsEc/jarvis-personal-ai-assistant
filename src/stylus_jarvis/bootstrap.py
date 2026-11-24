@@ -5,6 +5,7 @@ import sys
 import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from threading import Event as CancelEvent
 from uuid import UUID, uuid4
 
 from PySide6.QtCore import QLockFile, QTimer
@@ -17,6 +18,7 @@ from .inference.ollama import Ollama
 from .inference.router import Router
 from .runtime.coordinator import Coordinator
 from .runtime.diagnostics import Diagnostics, Event
+from .runtime.index_queue import IndexQueue
 from .runtime.scheduler import Scheduler
 from .runtime.offline import install_worker_policy, verify_application, whoami
 from .settings import load, profile_path
@@ -25,6 +27,9 @@ from .storage.repositories import Repositories
 from .storage.snapshots import SnapshotSchedule
 from .ui.main_window import MainWindow
 from .ui.review import FactEditor
+from .voice.capture import AudioClip
+from .voice.piper import Piper, ReplySpeech
+from .voice.whisper import Whisper
 from .memory.service import Destination, Fact, FactDraft, Origin
 
 
@@ -38,13 +43,25 @@ def user_identity() -> str:
 
 class Desktop:
     def __init__(self, view: MainWindow, store: Repositories, router: Router,
-                 coordinator: Coordinator, log: Diagnostics, owner: str) -> None:
+                 coordinator: Coordinator, log: Diagnostics, owner: str, whisper: Whisper | None = None,
+                 piper: Piper | None = None) -> None:
         self.view = view
         self.store = store
         self.router = router
         self.core = coordinator
         self.log = log
         self.owner = owner
+        self.whisper = whisper
+        self.speech = ReplySpeech(piper, store.validate, view.speech_status.setText) if piper else None
+        if self.speech is not None:
+            self.speech.microphone_active = lambda: view.voice.capturing
+            self.speech.playback_changed = view.voice.set_playback
+        self.view.speak_replies.setEnabled(self.speech is not None)
+        self.view.speak_replies.toggled.connect(self.speech_toggled)
+        self.voice_cancel: CancelEvent | None = None
+        self.view.voice.capture_ready.connect(self.transcribe)
+        self.view.use_transcript.clicked.connect(self.add_transcript_to_draft)
+        self.view.discard_transcript.clicked.connect(self.discard_transcript)
         self.generation = 0
         self.tasks: set[asyncio.Task[None]] = set()
         self.sending = False
@@ -53,6 +70,8 @@ class Desktop:
         self.close_notice_key: str | None = None
         self.closing = False
         self.request: UUID | None = None
+        self.index = IndexQueue(store, self.index_status)
+        self.view.voice.capture_state_changed.connect(self.controls)
         self.view.add_project.clicked.connect(lambda: self.spawn(self.add_project))
         self.view.capture_fact.clicked.connect(lambda: self.review_fact())
         self.view.export_project.clicked.connect(lambda: self.spawn(self.export_project))
@@ -96,6 +115,8 @@ class Desktop:
         task.add_done_callback(self.tasks.discard)
 
     def controls(self) -> None:
+        self.index.set_foreground(self.closing or self.sending or self.view.voice.capturing
+                                  or self.voice_cancel is not None or bool(self.speech and self.speech.busy))
         self.view.approve_source.setEnabled(bool(self.core.selection and not self.closing))
         self.view.extract_source.setEnabled(self.view.approve_source.isEnabled())
         self.view.capture_fact.setEnabled(self.view.approve_source.isEnabled())
@@ -105,9 +126,61 @@ class Desktop:
         self.view.send.setEnabled(bool(self.core.selection and self.router.verified
                                       and not self.sending and self.core.pending is None
                                       and not self.core.scheduler.closing))
-        self.view.stop.setEnabled(self.sending)
+        self.view.stop.setEnabled(self.sending or bool(self.speech and self.speech.busy))
         self.view.retry.setEnabled(self.core.pending is not None)
         self.view.probe.setEnabled(not self.sending)
+
+    def transcribe(self, clip: AudioClip) -> None:
+        worker = self.whisper
+        if worker is None or self.closing or self.voice_cancel is not None:
+            return
+        cancel = CancelEvent()
+        self.voice_cancel = cancel
+        self.controls()
+        generation = self.generation
+        scope = self.core.selection
+        self.view.voice.setEnabled(False)
+        self.view.show_voice_review("Transcribing locally…")
+
+        async def run() -> None:
+            nonlocal clip
+            try:
+                # Hand ownership to the executor. The review retains only text.
+                work = asyncio.get_running_loop().run_in_executor(None, worker.transcribe, clip, cancel)
+                del clip
+                text = await work
+                if scope is not None and not cancel.is_set():
+                    await self.store.validate(scope)
+                if not self.closing and not cancel.is_set() and generation == self.generation:
+                    message = "Review transcript" if text else "No speech recognized."
+                    self.view.show_voice_review(message, text)
+            except (OSError, ValueError, RuntimeError):
+                if not self.closing and not cancel.is_set() and generation == self.generation:
+                    self.view.show_voice_review("Local transcription failed. Continue by typing.")
+            except Failure:
+                self.view.clear_voice_review()
+            finally:
+                self.voice_cancel = None
+                self.view.voice.setEnabled(not self.closing and self.view.voice_transcript.isHidden())
+
+        self.spawn(run)
+
+    def add_transcript_to_draft(self) -> None:
+        text = self.view.voice_transcript.toPlainText()
+        if self.closing or self.view.voice_review.isHidden() or not text.strip():
+            return
+        draft = self.view.draft
+        draft.moveCursor(QTextCursor.MoveOperation.End)
+        separator = "\n" if draft.toPlainText() and not draft.toPlainText().endswith("\n") else ""
+        draft.insertPlainText(separator + text)
+        self.discard_transcript()
+        draft.setFocus()
+
+    def discard_transcript(self) -> None:
+        if self.voice_cancel is not None:
+            self.voice_cancel.set()
+        self.view.clear_voice_review()
+        self.view.voice.setEnabled(not self.closing and self.voice_cancel is None)
 
     @staticmethod
     def populate(combo: QComboBox, items: list[tuple[str, str]], selected: str | None = None) -> None:
@@ -132,16 +205,20 @@ class Desktop:
             return
         title = "Select a file to save revision excerpts locally" if excerpts else "Approve source file"
         path, _ = QFileDialog.getOpenFileName(self.view, title, self.view.projects.currentText())
-        if path and self.core.selection == scope:
-            receipt = await self.store.approve_source(scope, Path(path))
-            if excerpts and self.core.selection == scope:
-                records = await self.store.extract_locators(scope, receipt.source_id, receipt.revision_id)
-                if self.core.selection == scope:
-                    self.view.status.setText(f"Saved locators: {len(records)} · Pages needing OCR: "
-                                             f"{sum(r.ocr_needed for r in records)}")
+        if path and not self.closing and self.core.selection == scope:
+            if excerpts:
+                if self.index.put(scope, Path(path)):
+                    self.spawn(self.index.drain)
+                if not self.sending:
+                    self.view.status.setText("Source indexing queued.")
                 return
+            receipt = await self.store.approve_source(scope, Path(path))
             if self.core.selection == scope:
                 self.view.status.setText(f"Approved {receipt.relative_path} · revision {receipt.revision_id}")
+
+    def index_status(self, scope: Scope, message: str) -> None:
+        if scope == self.core.selection and not self.closing and not self.sending:
+            self.view.status.setText(message)
 
     async def export_project(self) -> None:
         scope = self.core.selection
@@ -261,6 +338,10 @@ class Desktop:
 
     def change(self, project_changed: bool, *, new: bool = False) -> None:
         self.generation += 1
+        self.index.clear()
+        self.speech_toggled(False)
+        self.view.voice.cancel()
+        self.discard_transcript()
         generation = self.generation
         project = self.view.projects.currentData()
         self.core.select(None)
@@ -334,35 +415,61 @@ class Desktop:
         if event.kind == "fragment":
             self.view.history.moveCursor(QTextCursor.MoveOperation.End)
             self.view.history.insertPlainText(event.text)
+            self.speak(event.text)
         else:
             self.view.status.setText(event.text)
 
+    def speech_toggled(self, enabled: bool) -> None:
+        if not enabled and self.speech is not None and self.speech.scope is not None:
+            self.speech.clear()
+            self.controls()
+
+    def speak(self, text: str, *, final: bool = False) -> None:
+        speech = self.speech
+        if speech is not None and speech.feed(text, final=final):
+            self.spawn(speech.drain)
+            self.controls()
+
     def stop(self) -> None:
+        speech_active = bool(self.speech and self.speech.busy)
+        self.speech_toggled(False)
         self.core.scheduler.stop()
-        self.view.status.setText("Stopping local reply…")
+        if speech_active:
+            self.view.speech_status.setText("Speech stopped.")
+        if self.sending:
+            self.view.status.setText("Stopping local reply…")
 
     def send(self) -> None:
         scope = self.core.selection
-        if not scope or self.sending or self.core.scheduler.closing:
+        if not scope or self.closing or self.sending or self.core.scheduler.closing:
             return
         self.sending = True
         self.streaming_scope = scope
         self.history_version += 1
         request = uuid4()
         self.request = request
+        if self.speech is not None and self.view.speak_replies.isChecked():
+            self.speech.begin(scope)
         text = self.view.draft.toPlainText()
         self.controls()
         self.view.history.appendPlainText(f"\nuser\n{text}\n\nassistant [provisional]")
         self.view.status.setText("Generating locally…")
 
         async def run() -> None:
+            speak_final = False
             try:
                 turn = await self.core.submit(scope, request, text)
+                speak_final = turn.state in (State.COMPLETED, State.TOKEN_LIMIT)
                 if scope == self.core.selection and text == self.view.draft.toPlainText():
                     self.view.draft.clear()
                     status = ACTIONS[Code.TOKEN_LIMIT] if turn.state == State.TOKEN_LIMIT else turn.state.value
                     self.view.status.setText(f"Offline · {status}")
             finally:
+                if self.request == request and not self.closing:
+                    if speak_final:
+                        self.speak("", final=True)
+                    else:
+                        self.speech_toggled(False)
                 self.sending = False
                 self.streaming_scope = None
                 if scope == self.core.selection and self.core.pending is None:
@@ -382,6 +489,9 @@ class Desktop:
         loop = asyncio.get_running_loop()
         deadline = loop.time() + grace
         self.closing = True
+        self.index.clear()
+        self.speech_toggled(False)
+        self.discard_transcript()
         self.view.centralWidget().setEnabled(False)
         idle = await self.core.scheduler.shutdown(grace)
         tasks = set(self.tasks)
@@ -395,6 +505,7 @@ class Desktop:
             self.close_notice_key = item.key
             self.closing = False
             self.view.centralWidget().setEnabled(True)
+            self.view.voice.setEnabled(True)
             self.controls()
             message = ("Retry save, or close again to recover the reply on restart." if self.core.recoverable
                        else "Reply exists only in memory. Keep this window open and retry the save.")
@@ -473,7 +584,7 @@ async def run_app(view: MainWindow, root: Path, exiting: asyncio.Event, *, shutd
                     desktop.event(event)
             core = Coordinator(store, router, Scheduler(), log, deliver)
             owner = await asyncio.to_thread(user_identity)
-            desktop = Desktop(view, store, router, core, log, owner)
+            desktop = Desktop(view, store, router, core, log, owner, Whisper(root), Piper(root))
             if not stopping:
                 await desktop.projects()
             if not stopping:

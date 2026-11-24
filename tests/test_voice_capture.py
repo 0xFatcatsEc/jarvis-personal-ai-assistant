@@ -187,8 +187,10 @@ class VoiceCaptureTests(unittest.TestCase):
             self.assertFalse(backend.start(microphone))
             self.assertEqual(backend.stop(), AudioClip(b"\x01\x00\x02\x00", 16000, 1,
                                                        QAudioFormat.SampleFormat.Int16))
+            self.assertFalse(backend._pcm)
             self.assertTrue(backend.start(microphone))
             self.assertIsNone(backend.stop(discard=True))
+            self.assertFalse(backend._pcm)
             self.assertTrue(backend.start(microphone))
             backend._source.stop()
             backend._monitor.timeout.emit()
@@ -197,6 +199,16 @@ class VoiceCaptureTests(unittest.TestCase):
             self.assertFalse(backend._monitor.isActive())
             self.assertIsNone(backend.stop())
             self.assertEqual(audio_source.call_count, 3)
+
+    def test_playback_blocks_button_and_hotkey_capture(self):
+        self.voice.set_playback(True)
+        QTest.mouseClick(self.voice.talk, Qt.MouseButton.LeftButton)
+        QTest.keyClick(self.editor, Qt.Key.Key_F8)
+        self.assertEqual(self.capture.starts, [])
+        self.assertIn("Playback active", self.voice.recording.text())
+        self.voice.set_playback(False)
+        QTest.keyClick(self.editor, Qt.Key.Key_F8)
+        self.assertEqual(self.capture.starts, ["Default fixture"])
 
     def test_windows_native_device_enumeration(self):
         for device in MicrophoneCapture.inputs():

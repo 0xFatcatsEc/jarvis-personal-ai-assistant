@@ -1,7 +1,7 @@
 """Qt view for the foundation release. Runtime work is scheduled by bootstrap."""
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
                                QMenu, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
 from ..voice.controller import VoiceControls
@@ -46,6 +46,34 @@ class MainWindow(QMainWindow):
         self.voice = VoiceControls(panel)
         self.voice.capture_interrupted.connect(self.draft.setFocus)
         layout.addWidget(self.voice)
+        speech_row = QHBoxLayout()
+        self.speak_replies = QCheckBox("Speak replies")
+        speech_row.addWidget(self.speak_replies)
+        self.speech_status = QLabel()
+        self.speech_status.setWordWrap(True)
+        speech_row.addWidget(self.speech_status, 1)
+        layout.addLayout(speech_row)
+        self.voice_review = QWidget()
+        review_layout = QVBoxLayout(self.voice_review)
+        review_layout.setContentsMargins(0, 0, 0, 0)
+        self.voice_review_status = QLabel()
+        self.voice_review_status.setWordWrap(True)
+        review_layout.addWidget(self.voice_review_status)
+        self.voice_transcript = QPlainTextEdit()
+        self.voice_transcript.setAccessibleName("Whisper transcript")
+        self.voice_transcript.setMaximumHeight(100)
+        review_layout.addWidget(self.voice_transcript)
+        review_actions = QHBoxLayout()
+        self.use_transcript = QPushButton("Add transcript to message")
+        self.discard_transcript = QPushButton("Discard")
+        review_actions.addWidget(self.use_transcript)
+        review_actions.addWidget(self.discard_transcript)
+        review_actions.addStretch()
+        review_layout.addLayout(review_actions)
+        self.voice_transcript.textChanged.connect(
+            lambda: self.use_transcript.setEnabled(bool(self.voice_transcript.toPlainText().strip())))
+        self.voice_review.hide()
+        layout.addWidget(self.voice_review)
         buttons = QHBoxLayout()
         self.send = QPushButton("Send")
         self.stop = QPushButton("Stop")
@@ -96,6 +124,20 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.diagnostic_view)
         self.diagnostic_toggle.toggled.connect(self.diagnostic_view.setVisible)
         panel.setEnabled(False)
+
+    def show_voice_review(self, message: str, transcript: str = "") -> None:
+        self.voice_review_status.setText(message)
+        self.voice_transcript.setPlainText(transcript)
+        self.voice_transcript.setVisible(bool(transcript))
+        self.use_transcript.setVisible(bool(transcript))
+        self.voice_review.show()
+        if transcript:
+            self.voice_transcript.setFocus()
+
+    def clear_voice_review(self) -> None:
+        self.voice_review.hide()
+        self.voice_transcript.clear()
+        self.voice_review_status.clear()
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.voice.cancel()

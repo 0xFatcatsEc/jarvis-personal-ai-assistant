@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from pathlib import Path
+from threading import Event
 from typing import Any
 from unittest.mock import Mock, patch
 
@@ -14,6 +15,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QTextCursor
+from PySide6.QtMultimedia import QAudioFormat
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QInputDialog
 from qasync import QEventLoop
@@ -27,6 +29,8 @@ from stylus_jarvis.storage.repositories import Repositories
 from stylus_jarvis.bootstrap import user_identity
 from stylus_jarvis.ui.main_window import MainWindow
 from stylus_jarvis.ui.review import FactEditor
+from stylus_jarvis.voice.capture import AudioClip
+from stylus_jarvis.voice.piper import ReplySpeech
 
 
 @unittest.skipUnless(os.name == "nt", "Windows desktop identity")
@@ -244,6 +248,24 @@ class DesktopTest(unittest.TestCase):
         self.enterContext(patch("stylus_jarvis.inference.ollama.verify_listener"))
         _, manifest = load(root)
         requests: list[str] = []
+        spoken: list[str] = []
+        speech_started = asyncio.Event()
+        playback_stopped = asyncio.Event()
+        first = "Visit the café! "
+        last = "Open `script.py` and see [the guide](https://example.com)."
+
+        async def play(pcm, _cancel):
+            spoken.append(pcm.decode("utf-8"))
+            speech_started.set()
+            if len(spoken) == 2:
+                while not _cancel.is_set():
+                    await asyncio.sleep(.01)
+                playback_stopped.set()
+
+        self.enterContext(patch("stylus_jarvis.voice.piper.Piper.synthesize",
+                                new=lambda _self, sentence, _cancel: sentence.encode("utf-8")))
+        self.enterContext(patch("stylus_jarvis.bootstrap.ReplySpeech",
+                                side_effect=lambda engine, validate, status: ReplySpeech(engine, validate, status, play)))
 
         async def respond(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
             try:
@@ -257,9 +279,18 @@ class DesktopTest(unittest.TestCase):
                 else:
                     length = next(int(h.split(":")[1]) for h in headers if h.lower().startswith("content-length:"))
                     question: dict[str, Any] = json.loads(await reader.readexactly(length))
-                    self.assertEqual(question["messages"][-1]["content"], "Explain this project")
-                    body = '{"message":{"content":"café"},"done":false}\n{"message":{"content":"!"},"done":true}\n'.encode()
+                    self.assertEqual(question["messages"][-1]["content"], "Explain this project\nCorrected dictation")
+                    frames = [(json.dumps({"message": {"content": text}, "done": done}) + "\n").encode()
+                              for text, done in ((first, False), (last, True))]
+                    body = b"".join(frames)
                 writer.write(f"HTTP/1.1 200 OK\r\nContent-Length: {len(body)}\r\nConnection: close\r\n\r\n".encode())
+                if path == "/api/chat":
+                    writer.write(frames[0])
+                    await writer.drain()
+                    await asyncio.wait_for(speech_started.wait(), 5)
+                    writer.write(frames[1])
+                    await writer.drain()
+                    return
                 for block in (body[:5], body[5:]):
                     writer.write(block)
                     await writer.drain()
@@ -354,10 +385,66 @@ class DesktopTest(unittest.TestCase):
                     QTest.keyClicks(window.draft, " project")
                     self.assertEqual(window.draft.toPlainText(), "Explain this project")
                     self.assertEqual(window.threads.currentData(), original_conversation)
+                clip = AudioClip(b"\0\0", 16000, 1, QAudioFormat.SampleFormat.Int16)
+                worker_started = Event()
+                worker_cancelled = Event()
+
+                def late_result(_worker, _clip, cancel):
+                    worker_started.set()
+                    if not cancel.wait(3):
+                        raise RuntimeError("Voice cancellation was not signalled")
+                    worker_cancelled.set()
+                    return "Late result"
+
+                with patch("stylus_jarvis.voice.whisper.Whisper.transcribe", late_result):
+                    window.voice.capture_ready.emit(clip)
+                    while not worker_started.is_set():
+                        await asyncio.sleep(.02)
+                    window.discard_transcript.click()
+                    while not window.voice.isEnabled():
+                        await asyncio.sleep(.02)
+                    self.assertTrue(worker_cancelled.is_set())
+                    self.assertTrue(window.voice_review.isHidden())
+                    self.assertEqual(window.voice_transcript.toPlainText(), "")
+                with patch("stylus_jarvis.voice.whisper.Whisper.transcribe", return_value="Sample dictated message"):
+                    window.voice.capture_ready.emit(clip)
+                    while window.voice_transcript.toPlainText() != "Sample dictated message":
+                        await asyncio.sleep(.02)
+                    window.discard_transcript.click()
+                    self.assertTrue(window.voice_review.isHidden())
+                    self.assertEqual(window.draft.toPlainText(), "Explain this project")
+
+                    window.voice.capture_ready.emit(clip)
+                    while window.voice_transcript.toPlainText() != "Sample dictated message":
+                        await asyncio.sleep(.02)
+                    self.assertFalse(window.voice_transcript.isReadOnly())
+                    window.voice_transcript.selectAll()
+                    QTest.keyClicks(window.voice_transcript, "Corrected dictation")
+                    self.assertEqual(window.draft.toPlainText(), "Explain this project")
+                    self.assertNotIn("/api/chat", requests)
+                    window.use_transcript.click()
+                    self.assertEqual(window.draft.toPlainText(), "Explain this project\nCorrected dictation")
+                    self.assertTrue(window.voice_review.isHidden())
+                    self.assertEqual(window.voice_transcript.toPlainText(), "")
+                    self.assertFalse(window.voice_transcript.document().isUndoAvailable())
+                    self.assertNotIn("/api/chat", requests)
+                self.assertFalse(window.speak_replies.isChecked())
+                window.speak_replies.click()
                 QTest.mouseClick(window.send, Qt.MouseButton.LeftButton)
                 while "assistant [completed]" not in window.history.toPlainText():
                     await asyncio.sleep(0.02)
                 self.assertIn("café!", window.history.toPlainText())
+                self.assertIn("`script.py`", window.history.toPlainText())
+                self.assertIn("[the guide](https://example.com)", window.history.toPlainText())
+                while len(spoken) < 2:
+                    await asyncio.sleep(.02)
+                self.assertEqual(spoken, ["Visit the café!", "Open and see."])
+                self.assertTrue(window.voice.playing)
+                self.assertTrue(window.stop.isEnabled())
+                window.stop.click()
+                self.assertEqual(window.speech_status.text(), "Speech stopped.")
+                await asyncio.wait_for(playback_stopped.wait(), 1)
+                self.assertFalse(window.voice.playing)
                 window.recovery_toggle.click()
                 while "No recorded success" not in window.recovery_view.toPlainText():
                     await asyncio.sleep(.02)
@@ -391,7 +478,7 @@ class DesktopTest(unittest.TestCase):
                         await asyncio.sleep(.02)
                     self.assertIn(window.projects.currentText(), choose.call_args.args[1])
                 manifest_data = json.loads(export.read_bytes())
-                self.assertEqual(manifest_data["conversations"][0]["messages"][1]["content"], "café!")
+                self.assertEqual(manifest_data["conversations"][0]["messages"][1]["content"], first + last)
                 self.assertEqual(manifest_data["facts"], [])
                 window.diagnostic_toggle.click()
                 diagnostic_text = window.diagnostic_view.toPlainText()

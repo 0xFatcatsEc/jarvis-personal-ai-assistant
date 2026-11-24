@@ -1,0 +1,52 @@
+{
+  "fixture": "voice-v1",
+  "recorded_at_utc": "2026-11-24T15:21:17.546190+00:00",
+  "model_sha256": "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe",
+  "synthetic_voice": "Microsoft David Desktop",
+  "results": [
+    {
+      "id": "V01",
+      "reference": "The database stores checkout records.",
+      "transcript": "The database stores checkout records.",
+      "terms": [
+        "database",
+        "checkout records"
+      ],
+      "matched": [
+        "database",
+        "checkout records"
+      ],
+      "seconds": 6.872
+    },
+    {
+      "id": "V02",
+      "reference": "Python uses Unicode to represent text.",
+      "transcript": "Python uses Unicode to represent text.",
+      "terms": [
+        "python",
+        "unicode"
+      ],
+      "matched": [
+        "python",
+        "unicode"
+      ],
+      "seconds": 5.579
+    },
+    {
+      "id": "V03",
+      "reference": "The offline queue synchronizes when the connection returns.",
+      "transcript": "The offline queue synchronizes when the connection returns.",
+      "terms": [
+        "offline queue",
+        "connection"
+      ],
+      "matched": [
+        "offline queue",
+        "connection"
+      ],
+      "seconds": 4.816
+    }
+  ],
+  "matched_terms": 6,
+  "total_terms": 6
+}

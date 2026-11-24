@@ -283,3 +283,39 @@ The Windows regression ran 120 tests with 118 passes and two existing skips. The
 **3.1.1.2 Handle device loss passed Windows checkout acceptance with simulated device removal.** The selected endpoint disappearing during hold stopped and discarded the partial capture. The loss message directed the owner to typing, and the composer retained its draft and focus. The desktop test completed the typed draft, sent it over local loopback and confirmed the reply in the original conversation. The voice tests also covered release before the removal notification, backend failure and a fresh press after reconnect. Physical USB unplug remains an optional hardware smoke test and part of the integrated voice qualification.
 
 Windows regression ran 125 tests across isolated modules with **123 passes and two existing skips**. All nine voice tests and five desktop tests passed. The next sequential item is **3.1.2.1 Run local Whisper worker**. [Device-loss design and smoke test](phase-3-technical-design.md#3112-handle-device-loss)
+
+## Phase 3 local Whisper verification
+
+**3.1.2.1 Run local Whisper worker passed on the Windows checkout.** The firewall-guarded MSI interpreter loaded the provisioned multilingual base model and transcribed three versioned, synthesized English coursework sentences. All three transcripts matched their references and all six vocabulary terms were recognized. One-shot latency was 4.816–6.872 seconds per fixture, including launch and model loading.
+
+**Live microphone accuracy remains open.** The user reported “Jarvis” → “Jerry, please” and “Tuesday” → “just me” on the MSI. The optional name hint did not resolve the live issue. In a guarded synthetic test, reducing the level by 30 dB kept “Jarvis” and “Jarvis, open my notes” intelligible to the decoder. Removing the first 200 ms of speech changed the single word to “service” and removed the name from the longer phrase. This test establishes sensitivity to missing speech in these fixtures. Compare playback from the same Windows input with a fresh JARVIS utterance to investigate the live path.
+
+Windows regression ran 128 tests across isolated modules with **126 passes and two existing skips**. The desktop test verified that preview text did not replace the draft or submit a chat request. Unit and pipe tests covered mono resampling, invalid input, silence, missing assets and cancellation. Next is **3.1.2.2 Edit transcript and dispose of audio**. [MSI fixture evidence](evidence/3.1.2.1/msi-whisper.json) · [Whisper design](phase-3-technical-design.md#3121-run-local-whisper-worker)
+
+### 3.1.2.2 Edit transcript and dispose of audio
+
+**Complete on the Windows checkout.** The desktop acceptance test corrected a misheard term in the editable review, appended it to an existing draft, and confirmed that only the explicit Send action sent the corrected text. Discard left the draft intact and signalled cancellation during transcription. A late worker result stayed hidden. Capture tests verified that the PCM buffer was empty after stop and discard. The pipe worker left the temporary profile empty after silence and a missing-model failure.
+
+The Windows regression ran 130 tests across isolated modules, with **127 passes and three skips**. Live microphone accuracy is still open. The next sequential implementation item is **3.2.1.1 Stream sentences to Piper**. [Phase 3 design and acceptance](phase-3-technical-design.md#3122-edit-transcript-and-dispose-of-audio)
+
+### 3.2.1.1 Stream sentences to Piper
+
+**Complete on the Windows checkout.** The desktop acceptance test verified playback of a complete sentence before the server sent its final frame. Both sentences reached the playback interface in order. The displayed and saved reply retained its original link and code. The native MSI tests synthesized real PCM using the provisioned assets in the firewall-guarded interpreter and played an in-memory clip to completion with muted Qt output.
+
+The default Windows regression finished with **132 passes and five skips**. The two opt-in Piper checks passed separately on the MSI. The next backlog item is **3.2.1.2 Coordinate microphone and stop**. [Phase 3 design and acceptance](phase-3-technical-design.md#3211-stream-sentences-to-piper)
+
+### 3.2.1.2 Coordinate microphone and stop
+
+**Complete on the Windows checkout.** The button and hotkey were blocked during playback. An active capture deferred playback. The desktop accepted **Stop** after the reply text completed, displayed immediate feedback and ended the test playback in under one second. The queued follow-up clip was discarded. [Design and acceptance](phase-3-technical-design.md#3212-coordinate-microphone-and-stop)
+
+### 3.2.2.1 Exercise voice with indexing
+
+**Measurement complete on the MSI Thin A15.** The bounded synthetic workload ran one initial and three warm trials with VS Code open. Each trial overlapped the voice pipeline with eight scoped FTS publications and finished native playback for six to nine complete sentences. Warm first-text p95 was **11.38 s**. Warm voice-turn durations ranged from **70.73 to 74.94 s**. Peak system RAM was **7,252 MiB** and peak GPU memory was **2,390 MiB**. One reply completed normally and three reached the 128-token budget. The report preserves each outcome. [Machine-readable MSI report](evidence/3.2.2.1/msi-voice.json) · [Reproduction and limits](phase-3-technical-design.md#3221-exercise-voice-with-indexing)
+
+The measured p95 exceeded the five-second laptop target. The integrated A6 performance gate remains open and requires the representative 20-warm-turn workload. The Phase 3 voice-input accuracy follow-up also remains open.
+
+### 3.2.2.2 Prioritize foreground work
+
+**Implementation and Windows acceptance passed.** The bounded queue uses the existing explicit source selection, grants and atomic FTS publication. The test held indexing during live foreground work, replaced a pending request for the same path and verified that the most recent bytes became active after release. The previously published revision remained historically searchable. [Design and acceptance](phase-3-technical-design.md#3222-prioritize-foreground-work)
+
+All eight Phase 3 backlog subtasks now have implementation or measurement evidence. The integrated release gates remain tracked separately.

@@ -6,9 +6,10 @@ import socket
 import subprocess
 import sys
 import threading
+import time
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from ..contracts.messages import Code, Failure
 
@@ -75,6 +76,44 @@ def _run(args: list[str], timeout: int) -> subprocess.CompletedProcess[bytes]:
 
 def whoami() -> bytes:
     return _run([str(_system_directory() / "whoami.exe"), "/user", "/fo", "csv", "/nh"], 5).stdout
+
+
+def run_whisper_worker(root: Path, pcm: bytes, cancel: threading.Event) -> bytes:
+    return _run_voice_worker("whisper_worker", root, pcm, cancel, 45)
+
+
+def run_piper_worker(root: Path, sentence: bytes, cancel: threading.Event) -> bytes:
+    return _run_voice_worker("piper_worker", root, sentence, cancel, 20)
+
+
+def _run_voice_worker(module: Literal["whisper_worker", "piper_worker"], root: Path, payload: bytes,
+                      cancel: threading.Event, timeout: float) -> bytes:
+    """Run a fixed local voice worker in the same firewall-guarded interpreter."""
+    if os.name != "nt":
+        raise Failure(Code.OFFLINE)
+    if cancel.is_set():
+        return b""
+    args = [sys.executable, "-P", "-s", "-B", "-u", "-m", f"stylus_jarvis.voice.{module}", str(root)]
+    token = _approved_command.set(subprocess.list2cmdline(args))
+    try:
+        process = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
+    finally:
+        _approved_command.reset(token)
+    deadline = time.monotonic() + timeout
+    pending: bytes | None = payload
+    with process:
+        while True:
+            if cancel.is_set() or time.monotonic() >= deadline:
+                process.kill()
+                process.communicate()
+                return b""
+            try:
+                output, _ = process.communicate(input=pending, timeout=.2)
+                return output if process.returncode == 0 else b""
+            except subprocess.TimeoutExpired:
+                # communicate buffers the original input internally after the first call.
+                pending = None
 
 
 def _check_windows(arguments: list[str]) -> None:
