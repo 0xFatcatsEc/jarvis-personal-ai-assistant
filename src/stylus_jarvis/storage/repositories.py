@@ -11,9 +11,15 @@ from ..settings import check_local_route
 from ..knowledge.ingestion import SourceRevision, fingerprint
 from ..knowledge.locators import Locator, extract
 from ..knowledge.context import Citation, EvidenceBundle, Passage, assemble, concepts
+from ..memory.service import Destination, Fact, FactDraft, Origin
 from .database import Database
 from . import recovery
 
+
+_FACT_SELECT = ("SELECT f.id,v.version,f.owner,f.project,v.text,v.origin,v.locator,r.source,l.revision "
+                "FROM facts f JOIN fact_versions v ON v.fact=f.id "
+                "LEFT JOIN evidence_locators l ON l.id=v.locator "
+                "LEFT JOIN source_revisions r ON r.id=l.revision ")
 
 _DISPLAY_STATE = "CASE WHEN t.state='failed' AND t.error='token_limit' THEN 'token_limit' ELSE t.state END"
 
@@ -273,6 +279,92 @@ class Repositories:
         bundle = await self.db.call(read)
         await self.validate(scope)
         return bundle
+
+    async def confirm_fact(self, scope: Scope, draft: FactDraft, *, confirmed: bool) -> Fact | None:
+        return await self._save_fact(scope, draft, confirmed, predecessor=None)
+
+    async def correct_fact(self, scope: Scope, draft: FactDraft, *, expected_version: int,
+                           confirmed: bool) -> Fact | None:
+        """Confirm a replacement statement for draft.id at the reviewed version."""
+        if type(expected_version) is not int or not 1 <= expected_version < 2**63 - 1:
+            raise Failure(Code.INPUT)
+        return await self._save_fact(scope, draft, confirmed, predecessor=expected_version)
+
+    async def _save_fact(self, scope: Scope, draft: FactDraft, confirmed: bool,
+                         predecessor: int | None) -> Fact | None:
+        if confirmed is not True:
+            return None
+        if draft.scope != scope:
+            raise Failure(Code.SCOPE)
+        project = scope.project if draft.destination == Destination.PROJECT else None
+        version = 1 if predecessor is None else predecessor + 1
+        key = draft.id.hex
+
+        def save(conn: sqlite3.Connection) -> None:
+            _authorize(conn, scope)
+            if draft.locator is not None and not conn.execute(
+                "SELECT 1 FROM evidence_locators l JOIN source_revisions r ON r.id=l.revision "
+                "JOIN sources s ON s.id=r.source WHERE l.id=? AND s.project=?",
+                (draft.locator, project)).fetchone():
+                raise Failure(Code.SCOPE)
+            payload = (draft.text, draft.origin.value, scope.conversation, scope.grant, draft.locator)
+            if predecessor is not None:
+                head = conn.execute("SELECT MAX(v.version) FROM facts f JOIN fact_versions v ON f.id=v.fact "
+                                    "WHERE f.id=? AND f.owner=? AND f.project IS ?",
+                                    (key, scope.owner, project)).fetchone()[0]
+                if head is None:
+                    raise Failure(Code.SCOPE)
+                if head != predecessor:
+                    raise Failure(Code.CONFLICT)
+            else:
+                inserted = conn.execute("INSERT INTO facts(id,owner,project) VALUES(?,?,?) ON CONFLICT(id) DO NOTHING",
+                                        (key, scope.owner, project))
+                if not inserted.rowcount:
+                    prior = conn.execute("SELECT v.text,v.origin,v.conversation,v.grant_revision,v.locator "
+                                         "FROM fact_versions v JOIN facts f ON f.id=v.fact WHERE f.id=? "
+                                         "AND f.owner=? AND f.project IS ? AND v.version=1",
+                                         (key, scope.owner, project)).fetchone()
+                    if prior is None or tuple(prior) != payload:
+                        raise Failure(Code.CONFLICT)
+                    return
+            conn.execute("INSERT INTO fact_versions(fact,version,text,origin,conversation,grant_revision,locator) "
+                         "VALUES(?,?,?,?,?,?,?)", (key, version, *payload))
+
+        await self.db.call(save, write=True)
+        return await self.get_fact(scope, key, destination=draft.destination, version=version)
+
+    async def recall_facts(self, scope: Scope, *, destination: Destination = Destination.PROJECT) -> list[Fact]:
+        if not isinstance(destination, Destination):
+            raise Failure(Code.INPUT)
+        project = scope.project if destination == Destination.PROJECT else None
+
+        def read(conn: sqlite3.Connection) -> list[Fact]:
+            _authorize(conn, scope)
+            rows = conn.execute(_FACT_SELECT + " WHERE f.owner=? AND f.project IS ? AND v.version="
+                                "(SELECT MAX(h.version) FROM fact_versions h WHERE h.fact=f.id) ORDER BY f.id",
+                                (scope.owner, project))
+            return [Fact(*row[:5], Origin(row[5]), *row[6:]) for row in rows]
+        facts = await self.db.call(read)
+        await self.validate(scope)
+        return facts
+
+    async def get_fact(self, scope: Scope, fact_id: str, *, destination: Destination = Destination.PROJECT,
+                       version: int = 1) -> Fact:
+        if not isinstance(destination, Destination) or version < 1:
+            raise Failure(Code.INPUT)
+        project = scope.project if destination == Destination.PROJECT else None
+
+        def read(conn: sqlite3.Connection) -> Fact:
+            _authorize(conn, scope)
+            row = conn.execute(_FACT_SELECT + " WHERE f.id=? "
+                               "AND f.owner=? AND f.project IS ? AND v.version=?",
+                               (fact_id, scope.owner, project, version)).fetchone()
+            if row is None:
+                raise Failure(Code.SCOPE)
+            return Fact(*row[:5], Origin(row[5]), *row[6:])
+        fact = await self.db.call(read)
+        await self.validate(scope)
+        return fact
 
     async def conversations(self, owner: str, project: str) -> list[tuple[str, str]]:
         return await self.db.call(lambda c: [(r[0], r[1]) for r in c.execute(

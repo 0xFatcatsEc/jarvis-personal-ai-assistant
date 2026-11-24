@@ -14,7 +14,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QInputDialog
 from qasync import QEventLoop
 
 from stylus_jarvis.bootstrap import run_app
@@ -25,6 +25,7 @@ from stylus_jarvis.storage.database import Database
 from stylus_jarvis.storage.repositories import Repositories
 from stylus_jarvis.bootstrap import user_identity
 from stylus_jarvis.ui.main_window import MainWindow
+from stylus_jarvis.ui.review import FactEditor
 
 
 @unittest.skipUnless(os.name == "nt", "Windows desktop identity")
@@ -283,6 +284,43 @@ class DesktopTest(unittest.TestCase):
                     await asyncio.sleep(0.02)
                 window.draft.setPlainText("Explain this project")
                 selected = root / "approved.txt"
+                window.capture_fact.click()
+                editor = window.findChild(FactEditor)
+                self.assertIn(window.projects.currentText(), editor.destination.currentText())
+                editor.statement.setPlainText("Discard this draft")
+                editor.reject()
+                await asyncio.sleep(.02)
+                window.capture_fact.click()
+                editor = next(d for d in window.findChildren(FactEditor) if d.isVisible())
+                editor.destination.setCurrentIndex(1)
+                editor.statement.setPlainText("A confirmed personal preference")
+                editor.save.click()
+                while "saved to personal memory" not in window.status.text():
+                    await asyncio.sleep(.02)
+                with sqlite3.connect(db.path) as reader:
+                    self.assertEqual(reader.execute("SELECT text FROM fact_versions").fetchall(),
+                                     [("A confirmed personal preference",)])
+                reader.close()
+                window.correct_personal.trigger()
+                while not any(p.isVisible() for p in window.findChildren(QInputDialog)):
+                    await asyncio.sleep(.02)
+                picker = next(p for p in window.findChildren(QInputDialog) if p.isVisible())
+                picker.accept()
+                while not any(e.isVisible() for e in window.findChildren(FactEditor)):
+                    await asyncio.sleep(.02)
+                editor = next(e for e in window.findChildren(FactEditor) if e.isVisible())
+                self.assertEqual(editor.statement.toPlainText(), "A confirmed personal preference")
+                self.assertFalse(editor.destination.isEnabled())
+                self.assertEqual(editor.save.text(), "Confirm correction")
+                editor.statement.setPlainText("A corrected personal preference")
+                window.status.clear()
+                editor.save.click()
+                while "saved to personal memory" not in window.status.text():
+                    await asyncio.sleep(.02)
+                with sqlite3.connect(db.path) as reader:
+                    self.assertEqual(reader.execute("SELECT version,text FROM fact_versions ORDER BY version").fetchall(),
+                                     [(1, "A confirmed personal preference"), (2, "A corrected personal preference")])
+                reader.close()
                 selected.write_bytes(b"owner selected evidence")
                 with patch("stylus_jarvis.bootstrap.QFileDialog.getOpenFileName",
                            return_value=(str(selected), "")):

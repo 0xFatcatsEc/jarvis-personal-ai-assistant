@@ -20,6 +20,8 @@ src/stylus_jarvis/knowledge/__init__.py
 src/stylus_jarvis/knowledge/context.py
 src/stylus_jarvis/knowledge/ingestion.py
 src/stylus_jarvis/knowledge/locators.py
+src/stylus_jarvis/memory/__init__.py
+src/stylus_jarvis/memory/service.py
 src/stylus_jarvis/runtime/__init__.py
 src/stylus_jarvis/runtime/coordinator.py
 src/stylus_jarvis/runtime/diagnostics.py
@@ -35,8 +37,10 @@ src/stylus_jarvis/storage/migrations/0002_turn_grant.sql
 src/stylus_jarvis/storage/migrations/0003_source_revisions.sql
 src/stylus_jarvis/storage/migrations/0004_evidence_locators.sql
 src/stylus_jarvis/storage/migrations/0005_scoped_index.sql
+src/stylus_jarvis/storage/migrations/0006_confirmed_facts.sql
 src/stylus_jarvis/ui/__init__.py
 src/stylus_jarvis/ui/main_window.py
+src/stylus_jarvis/ui/review.py
 tests/test_asset_provisioning.py
 tests/test_bounded_diagnostics.py
 tests/test_cited_context.py
@@ -46,6 +50,7 @@ tests/test_foundation.py
 tests/test_history_lifecycle.py
 tests/test_local_store.py
 tests/test_m0_fixtures.py
+tests/test_memory_capture.py
 tests/test_model_qualification.py
 tests/test_offline_policy.py
 tests/test_offline_trace.py

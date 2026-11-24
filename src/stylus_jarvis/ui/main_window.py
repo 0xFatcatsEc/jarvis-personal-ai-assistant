@@ -2,7 +2,7 @@
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
-                               QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
+                               QMenu, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
 
 class MainWindow(QMainWindow):
@@ -48,6 +48,16 @@ class MainWindow(QMainWindow):
         self.approve_source = QPushButton("Approve source file…")
         self.extract_source = QPushButton("Save source excerpts…")
         self.retry = QPushButton("Retry save")
+        self.capture_fact = QPushButton("Remember a fact…")
+        memory = QHBoxLayout()
+        memory.addWidget(self.capture_fact)
+        self.correct_fact = QPushButton("Correct a fact…")
+        menu = QMenu(self.correct_fact)
+        self.correct_project = menu.addAction("Project memory")
+        self.correct_personal = menu.addAction("Personal memory")
+        self.correct_fact.setMenu(menu)
+        memory.addWidget(self.correct_fact)
+        layout.addLayout(memory)
         for button in (self.send, self.stop, self.probe, self.retry, self.approve_source, self.extract_source):
             buttons.addWidget(button)
         layout.addLayout(buttons)

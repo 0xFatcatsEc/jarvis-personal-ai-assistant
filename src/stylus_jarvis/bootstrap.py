@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 from PySide6.QtCore import QLockFile, QTimer
 from PySide6.QtGui import QTextCursor
-from PySide6.QtWidgets import QApplication, QComboBox, QFileDialog, QMessageBox
+from PySide6.QtWidgets import QApplication, QComboBox, QFileDialog, QInputDialog, QMessageBox
 from qasync import QEventLoop
 
 from .contracts.messages import ACTIONS, Code, Failure, RuntimeEvent, Scope, State
@@ -23,6 +23,8 @@ from .settings import load, profile_path
 from .storage.database import Database
 from .storage.repositories import Repositories
 from .ui.main_window import MainWindow
+from .ui.review import FactEditor
+from .memory.service import Destination, Fact, FactDraft, Origin
 
 
 def user_identity() -> str:
@@ -51,6 +53,9 @@ class Desktop:
         self.closing = False
         self.request: UUID | None = None
         self.view.add_project.clicked.connect(lambda: self.spawn(self.add_project))
+        self.view.capture_fact.clicked.connect(lambda: self.review_fact())
+        self.view.correct_project.triggered.connect(lambda: self.spawn(lambda: self.choose_fact(Destination.PROJECT)))
+        self.view.correct_personal.triggered.connect(lambda: self.spawn(lambda: self.choose_fact(Destination.PERSONAL)))
         self.view.approve_source.clicked.connect(lambda: self.spawn(self.approve_source))
         self.view.extract_source.clicked.connect(lambda: self.spawn(lambda: self.approve_source(excerpts=True)))
         self.view.projects.currentIndexChanged.connect(lambda: self.change(True))
@@ -87,6 +92,8 @@ class Desktop:
     def controls(self) -> None:
         self.view.approve_source.setEnabled(bool(self.core.selection and not self.closing))
         self.view.extract_source.setEnabled(self.view.approve_source.isEnabled())
+        self.view.capture_fact.setEnabled(self.view.approve_source.isEnabled())
+        self.view.correct_fact.setEnabled(self.view.capture_fact.isEnabled())
         self.view.send.setEnabled(bool(self.core.selection and self.router.verified
                                       and not self.sending and self.core.pending is None
                                       and not self.core.scheduler.closing))
@@ -127,6 +134,73 @@ class Desktop:
                 return
             if self.core.selection == scope:
                 self.view.status.setText(f"Approved {receipt.relative_path} · revision {receipt.revision_id}")
+
+    async def choose_fact(self, destination: Destination) -> None:
+        scope = self.core.selection
+        if scope is None:
+            return
+        facts = await self.store.recall_facts(scope, destination=destination)
+        if scope != self.core.selection or self.closing:
+            return
+        if not facts:
+            self.view.status.setText(f"No confirmed facts in {destination.value} memory")
+            return
+        labels = [f"{f.text[:80]} · v{f.version} · {f.id}" for f in facts]
+        picker = QInputDialog(self.view)
+        picker.setWindowTitle("Correct a fact")
+        picker.setLabelText(f"Choose a fact from {destination.value} memory")
+        picker.setComboBoxItems(labels)
+        picker.setComboBoxEditable(False)
+
+        async def open_editor(fact: Fact) -> None:
+            await self.store.validate(scope)
+            if scope == self.core.selection and not self.closing:
+                self.review_fact(fact.text, previous=fact)
+
+        picker.textValueSelected.connect(lambda label: self.spawn(lambda: open_editor(facts[labels.index(label)])))
+        picker.finished.connect(picker.deleteLater)
+        picker.open()
+
+    def review_fact(self, text: str = "", origin: Origin = Origin.USER, *, previous: Fact | None = None) -> None:
+        scope = self.core.selection
+        if scope is None or self.closing:
+            return
+        editor = FactEditor(self.view, self.view.projects.currentText(), scope.owner, text, origin)
+        if previous is not None:
+            editor.setWindowTitle(f"Correct fact · version {previous.version}")
+            editor.destination.setCurrentIndex(0 if previous.project is not None else 1)
+            editor.destination.setEnabled(False)
+            editor.save.setText("Confirm correction")
+            if previous.locator:
+                editor.setWindowTitle(f"Correct version {previous.version} · save as an owner statement without evidence")
+
+        def confirm() -> None:
+            if self.core.selection != scope or self.closing:
+                return
+            destination = Destination(editor.destination.currentData())
+            value = editor.statement.toPlainText()
+            draft = (FactDraft(scope, value, destination, origin, id=UUID(previous.id))
+                     if previous else FactDraft(scope, value, destination, origin))
+
+            async def persist() -> None:
+                if self.core.selection == scope:
+                    if previous:
+                        try:
+                            await self.store.correct_fact(scope, draft, expected_version=previous.version, confirmed=True)
+                        except Failure as exc:
+                            if exc.code != Code.CONFLICT:
+                                raise
+                            if self.core.selection == scope:
+                                self.view.status.setText("This fact changed. Reopen its latest version and review your correction.")
+                            return
+                    else:
+                        await self.store.confirm_fact(scope, draft, confirmed=True)
+                    if self.core.selection == scope:
+                        self.view.status.setText(f"Fact saved to {draft.destination.value} memory")
+            self.spawn(persist)
+
+        editor.accepted.connect(confirm)
+        editor.open()
 
     async def add_project(self) -> None:
         path = QFileDialog.getExistingDirectory(self.view, "Select a local project")
