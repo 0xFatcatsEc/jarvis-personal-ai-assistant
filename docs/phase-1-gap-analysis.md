@@ -231,3 +231,55 @@ Schema 6 adds the fact registry and version records. The migration test inspecte
 **2.2.1.2 Resolve supersession is complete on the Windows checkout.** Confirmation appended version 2 under the original fact ID. Across SQLite reopen, active recall returned only version 2, and exact reads of versions 1 and 2 resolved their corresponding retained excerpts after external source replacement and removal. A declined correction left version 1 active. Concurrent corrections using two database connections yielded one successor and one stale-predecessor conflict. A revoked grant created no version. Tests also verified project isolation, explicit personal selection and owner boundaries. The Qt flow selected a personal fact, displayed its predecessor, locked its destination and required a fresh confirmation.
 
 Schema 6 already supplies the immutable version chain. This increment required no migration or reindex. Windows regression accounted for 102 tests across isolated modules, with 100 passes and two existing skips (opt-in live firewall/model check and directory-symlink permission). The final five-test desktop rerun passed. The next sequential item is **2.2.2.1 Suppress deleted facts**. [Supersession design and APIs](phase-2-technical-design.md#2212-resolve-supersession) · [Windows acceptance tests](../tests/test_memory_capture.py)
+
+## Phase 2 forgotten-fact verification
+
+**2.2.2.1 Suppress deleted facts is complete on the Windows checkout.** The first acceptance test failed on the missing forget API before implementation. It now passes through explicit forget, source replacement and FTS5 publication, SQLite reopen, and attempted inference under fresh fact IDs. Recall, historical fact reads and corrections with the forgotten ID are blocked. A matching fact in another project and the original document citation remain accessible under their own scopes.
+
+Qt acceptance exercised cancellation and explicit personal-memory confirmation. Repository tests covered scope and grant denial, stale versions, repeat confirmation, and a failure between independent ledger commit and primary cleanup. SQLite reopen finished cleanup. Opening an older primary with a newer matching ledger replayed the deletion. Missing and detectably older ledgers blocked startup. Schema 7 adds the ledger binding; the independent ledger is required alongside the primary store. Restore coverage verification remains assigned to 2.3.2.1.
+
+The Windows regression ran each module in a fresh interpreter with recorded boot acceptance enabled. **104 passed and two existing tests skipped** (opt-in live firewall/model and directory-symlink permissions). All ten memory tests, five desktop tests and nine local-store tests passed. The next backlog item is **2.2.2.2 Export scoped history and facts**. [Implementation and recovery rules](phase-2-technical-design.md#2221-suppress-deleted-facts) · [Memory tests](../tests/test_memory_capture.py)
+
+## Phase 2 scoped export verification
+
+**2.2.2.2 Export scoped history and facts is complete on the Windows checkout.** The repository test exported two conversations and the latest fact from one project, with the exact original evidence reference after file replacement and removal. It excluded the second project's records, personal memory, active turns, superseded versions and a forgotten fact whose primary cleanup had failed. Additional checks verified revoked-grant denial, temporary-file cleanup and preservation of a preexisting destination. Qt acceptance chose the file and parsed the resulting manifest.
+
+The Windows regression ran 108 tests in isolated modules with 106 passes and two existing skips (opt-in live firewall/model test and directory-symlink permission). Both export tests and all five desktop tests passed. Schema stays at 7. The next sequential item is **2.3.1.1 Schedule consistent snapshots**. [Design and format](phase-2-technical-design.md#2222-export-scoped-history-and-facts) · [Windows export tests](../tests/test_memory_export.py)
+
+## Phase 2 scheduled snapshot verification
+
+**2.3.1.1 Schedule consistent snapshots is complete on the Windows checkout.** The configurable desktop schedule publishes verified AES-256-GCM snapshots of the committed SQLite database and a separately encrypted deletion-ledger artifact. The Windows fixture held an independent write transaction open throughout backup. Decrypted SQLite passed integrity checks and contained the committed owner value, and the live writer could still update and commit. Wrong keys and modified ciphertext failed authentication. The scheduler fixture verified restart-safe daily timing, retained the last-success receipt after failed publication, and retried successfully. Key separation and shutdown were also verified.
+
+Windows regression ran 111 tests across isolated modules with 109 passes and two existing skips (opt-in live firewall/model test and directory-symlink permission). All three snapshot tests passed. No live profile was configured by these tests. The 24-hour loss and 30-minute restore targets still require clean-profile qualification. The next sequential item is **2.3.1.2 Expose recovery status**. [Configuration and format](phase-2-technical-design.md#2311-schedule-consistent-snapshots) · [Windows snapshot tests](../tests/test_snapshots.py)
+
+## Phase 2 recovery status verification
+
+**2.3.1.2 Expose recovery status is complete on the Windows checkout.** The Qt panel shows the configured destination and elapsed time since the last verified backup. Removing the destination or a backup artifact reported the problem without clearing the success age. Snapshot-time source dependencies remained scoped to the selected project and identified the unavailable original after deletion. Sources approved after capture were excluded from that inventory.
+
+Windows regression ran 113 tests in isolated modules, with **111 passes and two existing skips** (opt-in live firewall/model test and directory-symlink permission). All five snapshot tests and five desktop tests passed. No live profile was configured. The next sequential item is **2.3.2.1 Reconcile deleted records** during staged restore. [Recovery panel and receipt design](phase-2-technical-design.md#2312-expose-recovery-status) · [Snapshot tests](../tests/test_snapshots.py)
+
+## Phase 2 staged deletion reconciliation verification
+
+**2.3.2.1 Reconcile deleted records is complete on the Windows checkout.** The older encrypted primary was staged using its authenticated ledger and a later independent ledger set. The report recorded sequence 0 to 1 and one removed fact. The staged pair reopened in a fresh database and returned only the surviving fact. The staged ledger blocked re-inference under a fresh fact ID. Absent independent evidence, insufficient sequence coverage, an unavailable ledger path, missing ledger artifacts and tampering produced report-only quarantine. Invalid primary authentication published nothing. The CLI protects the active profile and publishes no changes to it.
+
+Windows regression ran 116 tests in isolated modules with **114 passes and two existing skips** (opt-in live firewall/model and directory-symlink permission). All three staged-restore tests passed again after the final path checks. Schema remains 7. The next item is **2.3.2.2 Rehearse migration and rollback**. [Procedure and report](phase-2-technical-design.md#2321-reconcile-deleted-records) · [Windows acceptance tests](../tests/test_staged_restore.py)
+
+## Phase 2 migration and rollback rehearsal
+
+**2.3.2.2 Rehearse migration and rollback is complete for the versioned sample on the MSI Thin A15 B7UC.** The final offline run upgraded schema 6 to 7 and used the older matching wheel with the original pre-upgrade snapshot for rollback to schema 6. Staged encrypted restore and content verification took **0.184 s**. The simulated recovery point was **23 h 59 min** old. The surviving conversation, fact and citation reopened; a later deletion was replayed; missing coverage quarantined the backup. Recovery status identified the removed original. Matched-binary rollback and verification took **0.886 s**. The run used temporary profiles and did not activate a restore or use the live database.
+
+This completes the Phase 2 backlog and supplies M1 recovery evidence for the rehearsal fixture. The timing does not establish a production backup cadence or installed offline MVP qualification. Phase 3 starts at **3.1.1.1 Select microphone and hotkey**. [Machine-readable MSI evidence](evidence/2.3.2.2/msi-rehearsal.json) · [Rehearsal procedure](phase-2-technical-design.md#2322-rehearse-migration-and-rollback)
+
+## Phase 3 microphone and hotkey verification
+
+**3.1.1.1 is implemented on the Windows checkout.** The UI supports endpoint selection, foreground F8/F9/F12 hold-to-record, and a visible recording indicator. Automated tests passed selected-device dispatch, auto-repeat handling, key and mouse release, cancelling on window deactivation, no-device keyboard input, and whole-frame PCM handling. The MSI reported one native input endpoint. No physical microphone was activated during the automated checks.
+
+The Windows regression ran 120 tests with 118 passes and two existing skips. The final focused run passed all five voice tests. Physical start and release remain a short hands-on check. The next implementation item is **3.1.1.2 Handle device loss**. [Technical design and MSI smoke test](phase-3-technical-design.md)
+
+**3.1.1.1 interactive MSI acceptance passed.** The owner supplied a live trace showing successful start and release for both the button and selected hotkey with no Qt state-conversion error. This closes the outstanding physical control check. Next is **3.1.1.2 Handle device loss**. [Voice acceptance record](phase-3-technical-design.md#3111-select-microphone-and-hotkey)
+
+## Phase 3 device-loss verification
+
+**3.1.1.2 Handle device loss passed Windows checkout acceptance with simulated device removal.** The selected endpoint disappearing during hold stopped and discarded the partial capture. The loss message directed the owner to typing, and the composer retained its draft and focus. The desktop test completed the typed draft, sent it over local loopback and confirmed the reply in the original conversation. The voice tests also covered release before the removal notification, backend failure and a fresh press after reconnect. Physical USB unplug remains an optional hardware smoke test and part of the integrated voice qualification.
+
+Windows regression ran 125 tests across isolated modules with **123 passes and two existing skips**. All nine voice tests and five desktop tests passed. The next sequential item is **3.1.2.1 Run local Whisper worker**. [Device-loss design and smoke test](phase-3-technical-design.md#3112-handle-device-loss)

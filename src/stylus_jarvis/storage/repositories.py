@@ -12,7 +12,9 @@ from ..knowledge.ingestion import SourceRevision, fingerprint
 from ..knowledge.locators import Locator, extract
 from ..knowledge.context import Citation, EvidenceBundle, Passage, assemble, concepts
 from ..memory.service import Destination, Fact, FactDraft, Origin
+from ..memory.export import write_manifest
 from .database import Database
+from .deletions import open_ledger, reconcile
 from . import recovery
 
 
@@ -302,11 +304,24 @@ class Repositories:
 
         def save(conn: sqlite3.Connection) -> None:
             _authorize(conn, scope)
-            if draft.locator is not None and not conn.execute(
-                "SELECT 1 FROM evidence_locators l JOIN source_revisions r ON r.id=l.revision "
-                "JOIN sources s ON s.id=r.source WHERE l.id=? AND s.project=?",
-                (draft.locator, project)).fetchone():
-                raise Failure(Code.SCOPE)
+            evidence = None
+            if draft.locator is not None:
+                evidence = conn.execute(
+                    "SELECT s.id,r.sha256 FROM evidence_locators l JOIN source_revisions r ON r.id=l.revision "
+                    "JOIN sources s ON s.id=r.source WHERE l.id=? AND s.project=?",
+                    (draft.locator, project)).fetchone()
+                if evidence is None:
+                    raise Failure(Code.SCOPE)
+            with open_ledger(conn, self.db.deletion_path()) as ledger:
+                if ledger.conn.execute("SELECT 1 FROM deletions WHERE fact=?", (key,)).fetchone():
+                    raise Failure(Code.SCOPE)
+                if draft.origin == Origin.INFERRED:
+                    tokens = [ledger.text_token(scope.owner, project, draft.text)]
+                    if evidence is not None:
+                        tokens.extend(ledger.token(kind, scope.owner, project, value)
+                                      for kind, value in zip(("source", "digest"), evidence, strict=True))
+                    if ledger.blocks(tokens):
+                        raise Failure(Code.CONFLICT)
             payload = (draft.text, draft.origin.value, scope.conversation, scope.grant, draft.locator)
             if predecessor is not None:
                 head = conn.execute("SELECT MAX(v.version) FROM facts f JOIN fact_versions v ON f.id=v.fact "
@@ -333,6 +348,50 @@ class Repositories:
         await self.db.call(save, write=True)
         return await self.get_fact(scope, key, destination=draft.destination, version=version)
 
+    async def forget_fact(self, scope: Scope, fact_id: str, *, expected_version: int, confirmed: bool,
+                          destination: Destination = Destination.PROJECT) -> bool:
+        if confirmed is not True:
+            return False
+        if not isinstance(destination, Destination) or type(expected_version) is not int or expected_version < 1:
+            raise Failure(Code.INPUT)
+        project = scope.project if destination == Destination.PROJECT else None
+
+        def forget(conn: sqlite3.Connection) -> None:
+            _authorize(conn, scope)
+            with open_ledger(conn, self.db.deletion_path()) as ledger:
+                prior = ledger.conn.execute("SELECT version FROM deletions WHERE fact=? AND scope=?",
+                    (fact_id, ledger.token("scope", scope.owner, project))).fetchone()
+                if prior is not None:
+                    if prior[0] != expected_version:
+                        raise Failure(Code.CONFLICT)
+                else:
+                    versions = conn.execute(_FACT_SELECT + " WHERE f.id=? AND f.owner=? AND f.project IS ? "
+                                            "ORDER BY v.version DESC", (fact_id, scope.owner, project)).fetchall()
+                    if not versions:
+                        raise Failure(Code.SCOPE)
+                    if versions[0][1] != expected_version:
+                        raise Failure(Code.CONFLICT)
+                    tokens = {ledger.text_token(scope.owner, project, version[4]) for version in versions}
+                    for source, digest in conn.execute(
+                        "SELECT r.source,r.sha256 FROM fact_versions v JOIN evidence_locators l ON l.id=v.locator "
+                        "JOIN source_revisions r ON r.id=l.revision WHERE v.fact=?", (fact_id,)
+                    ):
+                        tokens.add(ledger.token("source", scope.owner, project, source))
+                        tokens.add(ledger.token("digest", scope.owner, project, digest))
+                    ledger.record(fact_id, ledger.token("scope", scope.owner, project), expected_version, tokens)
+                reconcile(conn, ledger)
+
+        await self.db.call(forget, write=True)
+        return True
+
+    def _active_facts(self, conn: sqlite3.Connection, owner: str, project: str | None) -> list[Fact]:
+        rows = conn.execute(_FACT_SELECT + " WHERE f.owner=? AND f.project IS ? AND v.version="
+                            "(SELECT MAX(h.version) FROM fact_versions h WHERE h.fact=f.id) ORDER BY f.id",
+                            (owner, project))
+        with open_ledger(conn, self.db.deletion_path()) as ledger:
+            return [Fact(*row[:5], Origin(row[5]), *row[6:]) for row in rows
+                    if not ledger.forgotten(row[0], owner, project)]
+
     async def recall_facts(self, scope: Scope, *, destination: Destination = Destination.PROJECT) -> list[Fact]:
         if not isinstance(destination, Destination):
             raise Failure(Code.INPUT)
@@ -340,13 +399,46 @@ class Repositories:
 
         def read(conn: sqlite3.Connection) -> list[Fact]:
             _authorize(conn, scope)
-            rows = conn.execute(_FACT_SELECT + " WHERE f.owner=? AND f.project IS ? AND v.version="
-                                "(SELECT MAX(h.version) FROM fact_versions h WHERE h.fact=f.id) ORDER BY f.id",
-                                (scope.owner, project))
-            return [Fact(*row[:5], Origin(row[5]), *row[6:]) for row in rows]
+            return self._active_facts(conn, scope.owner, project)
         facts = await self.db.call(read)
         await self.validate(scope)
         return facts
+
+    async def export_project(self, scope: Scope, target: Path) -> Path:
+        """Publish one project's settled history and current confirmed facts."""
+        def export(conn: sqlite3.Connection) -> Path:
+            _authorize(conn, scope)
+            histories = {row["id"]: dict(row) | {"messages": []} for row in conn.execute(
+                "SELECT id,title,created_at FROM conversations WHERE project=? ORDER BY rowid", (scope.project,))}
+            for row in conn.execute(
+                f"SELECT m.conversation,m.seq,m.turn,m.role,m.content,{_DISPLAY_STATE} AS state "
+                "FROM messages m JOIN conversations c ON c.id=m.conversation JOIN turns t ON t.id=m.turn "
+                "WHERE c.project=? AND t.state!='active' ORDER BY c.rowid,m.seq", (scope.project,)
+            ):
+                message = dict(row)
+                histories[message.pop("conversation")]["messages"].append(message)
+
+            facts = []
+            for fact in self._active_facts(conn, scope.owner, scope.project):
+                evidence = None
+                if fact.locator is not None:
+                    row = conn.execute(
+                        "SELECT s.id AS source_id,r.id AS revision_id,l.id AS locator_id,"
+                        "s.relative_path,r.sha256,l.page,l.start,l.end FROM evidence_locators l "
+                        "JOIN source_revisions r ON r.id=l.revision JOIN sources s ON s.id=r.source "
+                        "WHERE l.id=? AND s.project=?", (fact.locator, scope.project)).fetchone()
+                    if row is None:
+                        raise Failure(Code.STORE)
+                    evidence = dict(row)
+                facts.append({"id": fact.id, "version": fact.version, "text": fact.text,
+                              "origin": fact.origin.value, "evidence": evidence})
+            return write_manifest(target, {"format": "stylus-jarvis-project", "version": 1,
+                                           "project_id": scope.project, "conversations": list(histories.values()),
+                                           "facts": facts})
+
+        # Serialize publication with grant updates and forgetting. The export has
+        # no database changes, but an immediate transaction fixes the ordering.
+        return await self.db.call(export, write=True)
 
     async def get_fact(self, scope: Scope, fact_id: str, *, destination: Destination = Destination.PROJECT,
                        version: int = 1) -> Fact:
@@ -356,6 +448,9 @@ class Repositories:
 
         def read(conn: sqlite3.Connection) -> Fact:
             _authorize(conn, scope)
+            with open_ledger(conn, self.db.deletion_path()) as ledger:
+                if ledger.forgotten(fact_id, scope.owner, project):
+                    raise Failure(Code.SCOPE)
             row = conn.execute(_FACT_SELECT + " WHERE f.id=? "
                                "AND f.owner=? AND f.project IS ? AND v.version=?",
                                (fact_id, scope.owner, project, version)).fetchone()

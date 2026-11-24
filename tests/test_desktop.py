@@ -8,11 +8,12 @@ import unittest
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QTextCursor
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QInputDialog
 from qasync import QEventLoop
@@ -330,10 +331,68 @@ class DesktopTest(unittest.TestCase):
                     window.extract_source.click()
                     while "Saved locators: 1" not in window.status.text():
                         await asyncio.sleep(.02)
+                window.activateWindow()
+                while not window.isActiveWindow():
+                    await asyncio.sleep(.02)
+                original_conversation = window.threads.currentData()
+                voice = window.voice
+                microphone = Mock()
+                microphone.id.return_value = b"desktop-rehearsal"
+                microphone.description.return_value = "Desktop rehearsal microphone"
+                with (patch.object(voice._capture, "inputs", side_effect=[[microphone], [], []]),
+                      patch.object(voice._capture, "start", return_value=True),
+                      patch.object(voice._capture, "stop", return_value=None) as discard):
+                    voice.refresh()
+                    window.draft.setPlainText("Explain this")
+                    QTest.mousePress(voice.talk, Qt.MouseButton.LeftButton)
+                    self.assertIn("Recording", voice.recording.text())
+                    voice._capture.inputs_changed.emit()
+                    discard.assert_called_once_with(discard=True)
+                    self.assertIn("Continue by typing", voice.recording.text())
+                    self.assertTrue(window.draft.hasFocus())
+                    window.draft.moveCursor(QTextCursor.MoveOperation.End)
+                    QTest.keyClicks(window.draft, " project")
+                    self.assertEqual(window.draft.toPlainText(), "Explain this project")
+                    self.assertEqual(window.threads.currentData(), original_conversation)
                 QTest.mouseClick(window.send, Qt.MouseButton.LeftButton)
                 while "assistant [completed]" not in window.history.toPlainText():
                     await asyncio.sleep(0.02)
                 self.assertIn("café!", window.history.toPlainText())
+                window.recovery_toggle.click()
+                while "No recorded success" not in window.recovery_view.toPlainText():
+                    await asyncio.sleep(.02)
+                self.assertIn("Not configured", window.recovery_view.toPlainText())
+                async def open_forget_editor() -> FactEditor:
+                    window.forget_personal.trigger()
+                    while not any(p.isVisible() for p in window.findChildren(QInputDialog)):
+                        await asyncio.sleep(.02)
+                    next(p for p in window.findChildren(QInputDialog) if p.isVisible()).accept()
+                    while not any(e.isVisible() for e in window.findChildren(FactEditor)):
+                        await asyncio.sleep(.02)
+                    return next(e for e in window.findChildren(FactEditor) if e.isVisible())
+
+                forget_editor = await open_forget_editor()
+                self.assertEqual(forget_editor.statement.toPlainText(), "A corrected personal preference")
+                self.assertTrue(forget_editor.statement.isReadOnly())
+                self.assertEqual(forget_editor.save.text(), "Confirm forget")
+                forget_editor.reject()
+                forget_editor = await open_forget_editor()
+                forget_editor.save.click()
+                while "forgotten from personal memory" not in window.status.text():
+                    await asyncio.sleep(.02)
+                with sqlite3.connect(db.path) as reader:
+                    self.assertEqual(reader.execute("SELECT count(*) FROM fact_versions").fetchone()[0], 0)
+                reader.close()
+                export = root / "desktop-export.json"
+                with patch("stylus_jarvis.bootstrap.QFileDialog.getSaveFileName",
+                           return_value=(str(export), "")) as choose:
+                    window.export_project.click()
+                    while "Project exported" not in window.status.text():
+                        await asyncio.sleep(.02)
+                    self.assertIn(window.projects.currentText(), choose.call_args.args[1])
+                manifest_data = json.loads(export.read_bytes())
+                self.assertEqual(manifest_data["conversations"][0]["messages"][1]["content"], "café!")
+                self.assertEqual(manifest_data["facts"], [])
                 window.diagnostic_toggle.click()
                 diagnostic_text = window.diagnostic_view.toPlainText()
                 self.assertIn('"event":"sqlite_writer"', diagnostic_text)

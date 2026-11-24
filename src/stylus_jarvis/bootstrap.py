@@ -22,6 +22,7 @@ from .runtime.offline import install_worker_policy, verify_application, whoami
 from .settings import load, profile_path
 from .storage.database import Database
 from .storage.repositories import Repositories
+from .storage.snapshots import SnapshotSchedule
 from .ui.main_window import MainWindow
 from .ui.review import FactEditor
 from .memory.service import Destination, Fact, FactDraft, Origin
@@ -54,8 +55,13 @@ class Desktop:
         self.request: UUID | None = None
         self.view.add_project.clicked.connect(lambda: self.spawn(self.add_project))
         self.view.capture_fact.clicked.connect(lambda: self.review_fact())
+        self.view.export_project.clicked.connect(lambda: self.spawn(self.export_project))
         self.view.correct_project.triggered.connect(lambda: self.spawn(lambda: self.choose_fact(Destination.PROJECT)))
         self.view.correct_personal.triggered.connect(lambda: self.spawn(lambda: self.choose_fact(Destination.PERSONAL)))
+        self.view.forget_project.triggered.connect(
+            lambda: self.spawn(lambda: self.choose_fact(Destination.PROJECT, forget=True)))
+        self.view.forget_personal.triggered.connect(
+            lambda: self.spawn(lambda: self.choose_fact(Destination.PERSONAL, forget=True)))
         self.view.approve_source.clicked.connect(lambda: self.spawn(self.approve_source))
         self.view.extract_source.clicked.connect(lambda: self.spawn(lambda: self.approve_source(excerpts=True)))
         self.view.projects.currentIndexChanged.connect(lambda: self.change(True))
@@ -94,6 +100,8 @@ class Desktop:
         self.view.extract_source.setEnabled(self.view.approve_source.isEnabled())
         self.view.capture_fact.setEnabled(self.view.approve_source.isEnabled())
         self.view.correct_fact.setEnabled(self.view.capture_fact.isEnabled())
+        self.view.forget_fact.setEnabled(self.view.capture_fact.isEnabled())
+        self.view.export_project.setEnabled(self.view.capture_fact.isEnabled())
         self.view.send.setEnabled(bool(self.core.selection and self.router.verified
                                       and not self.sending and self.core.pending is None
                                       and not self.core.scheduler.closing))
@@ -135,7 +143,29 @@ class Desktop:
             if self.core.selection == scope:
                 self.view.status.setText(f"Approved {receipt.relative_path} · revision {receipt.revision_id}")
 
-    async def choose_fact(self, destination: Destination) -> None:
+    async def export_project(self) -> None:
+        scope = self.core.selection
+        if scope is None:
+            return
+        title = f"Export project history and facts as readable JSON · {self.view.projects.currentText()}"
+        path, _ = QFileDialog.getSaveFileName(self.view, title, "stylus-project.json", "JSON (*.json)",
+                                             options=QFileDialog.Option.DontConfirmOverwrite)
+        if not path or self.closing or self.core.selection != scope:
+            return
+        target = Path(path)
+        if not target.suffix:
+            target = target.with_suffix(".json")
+        try:
+            saved = await self.store.export_project(scope, target)
+        except Failure as exc:
+            if exc.code != Code.CONFLICT:
+                raise
+            self.view.status.setText("This export name already exists. Choose a new filename.")
+            return
+        if self.core.selection == scope:
+            self.view.status.setText(f"Project exported · {saved.name}")
+
+    async def choose_fact(self, destination: Destination, *, forget: bool = False) -> None:
         scope = self.core.selection
         if scope is None:
             return
@@ -147,7 +177,7 @@ class Desktop:
             return
         labels = [f"{f.text[:80]} · v{f.version} · {f.id}" for f in facts]
         picker = QInputDialog(self.view)
-        picker.setWindowTitle("Correct a fact")
+        picker.setWindowTitle("Forget a fact" if forget else "Correct a fact")
         picker.setLabelText(f"Choose a fact from {destination.value} memory")
         picker.setComboBoxItems(labels)
         picker.setComboBoxEditable(False)
@@ -155,11 +185,32 @@ class Desktop:
         async def open_editor(fact: Fact) -> None:
             await self.store.validate(scope)
             if scope == self.core.selection and not self.closing:
-                self.review_fact(fact.text, previous=fact)
+                if forget:
+                    self.review_forget(scope, fact, destination)
+                else:
+                    self.review_fact(fact.text, previous=fact)
 
         picker.textValueSelected.connect(lambda label: self.spawn(lambda: open_editor(facts[labels.index(label)])))
         picker.finished.connect(picker.deleteLater)
         picker.open()
+
+    def review_forget(self, scope: Scope, fact: Fact, destination: Destination) -> None:
+        editor = FactEditor(self.view, self.view.projects.currentText(), scope.owner, fact.text, Origin.USER)
+        editor.setWindowTitle(f"Forget fact · remove all versions (current version {fact.version})")
+        editor.destination.setCurrentIndex(0 if destination == Destination.PROJECT else 1)
+        editor.destination.setEnabled(False)
+        editor.statement.setReadOnly(True)
+        editor.save.setText("Confirm forget")
+
+        async def persist() -> None:
+            if self.core.selection == scope:
+                await self.store.forget_fact(scope, fact.id, expected_version=fact.version,
+                                             confirmed=True, destination=destination)
+                if self.core.selection == scope:
+                    self.view.status.setText(f"Fact forgotten from {destination.value} memory")
+
+        editor.accepted.connect(lambda: self.spawn(persist))
+        editor.open()
 
     def review_fact(self, text: str = "", origin: Origin = Origin.USER, *, previous: Fact | None = None) -> None:
         scope = self.core.selection
@@ -213,6 +264,7 @@ class Desktop:
         generation = self.generation
         project = self.view.projects.currentData()
         self.core.select(None)
+        self.view.recovery_view.clear()
         self.view.history.clear()
         self.view.search.clear()
         self.view.draft.clear()
@@ -371,9 +423,43 @@ async def run_app(view: MainWindow, root: Path, exiting: asyncio.Event, *, shutd
     model: Ollama | None = None
     desktop: Desktop | None = None
     stopping = False
+    snapshots = SnapshotSchedule(db, root, lambda code: log.emit(Event.ERROR, code=code))
+    snapshot_task: asyncio.Task[None] | None = None
+    recovery_refreshing = False
+    recovery_timer = QTimer(view)
+
+    def refresh_recovery() -> None:
+        nonlocal recovery_refreshing
+        if desktop is None or desktop.closing or recovery_refreshing or not view.recovery_toggle.isChecked():
+            return
+        scope = desktop.core.selection
+        recovery_refreshing = True
+
+        async def refresh() -> None:
+            nonlocal recovery_refreshing
+            try:
+                if scope is not None:
+                    await desktop.store.validate(scope)
+                status = await asyncio.to_thread(snapshots.status, scope)
+                if scope is not None:
+                    await desktop.store.validate(scope)
+                if scope == desktop.core.selection and view.recovery_toggle.isChecked():
+                    rendered = status.display()
+                    if rendered != view.recovery_view.toPlainText():
+                        view.recovery_view.setPlainText(rendered)
+            except Failure:
+                if scope == desktop.core.selection:
+                    view.recovery_view.setPlainText("Recovery status for this project is unavailable.")
+            finally:
+                recovery_refreshing = False
+
+        desktop.spawn(refresh)
+
+    recovery_timer.timeout.connect(refresh_recovery)
+    view.recovery_toggle.toggled.connect(refresh_recovery)
 
     async def startup() -> int:
-        nonlocal model, desktop
+        nonlocal model, desktop, snapshot_task
         try:
             settings, manifest = await asyncio.to_thread(load, root)
             log.identify(manifest.build)
@@ -394,6 +480,9 @@ async def run_app(view: MainWindow, root: Path, exiting: asyncio.Event, *, shutd
                 view.centralWidget().setEnabled(True)
                 desktop.controls()
                 desktop.spawn(desktop.probe)
+                snapshot_task = asyncio.create_task(snapshots.run())
+                recovery_timer.start(5000)
+                refresh_recovery()
             return 0
         except Exception as exc:
             failure = exc if isinstance(exc, Failure) else Failure(Code.INTERNAL)
@@ -402,7 +491,11 @@ async def run_app(view: MainWindow, root: Path, exiting: asyncio.Event, *, shutd
             return 1
 
     async def close_services() -> None:
+        recovery_timer.stop()
+        snapshots.shutdown()
         try:
+            if snapshot_task:
+                await snapshot_task
             if model:
                 await model.close()
         finally:

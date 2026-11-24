@@ -3,3 +3,4 @@ httpx<1,>=0.28
 PySide6<7,>=6.8
 qasync<1,>=0.28
 pypdf>=7.1.1
+cryptography>=50.0.2

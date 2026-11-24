@@ -13,6 +13,7 @@ from uuid import uuid4
 from ..contracts.messages import Code, Failure
 from ..settings import local_data_path
 from .recovery import recover
+from .deletions import open_ledger, reconcile
 
 
 def _check_integrity(conn: sqlite3.Connection) -> None:
@@ -46,6 +47,13 @@ class Database:
 
     async def open(self) -> None:
         await asyncio.get_running_loop().run_in_executor(self._pool, self._initialize)
+
+    def deletion_path(self) -> Path:
+        requested = self.path.with_name(f"{self.path.name}.deletions.sqlite3")
+        resolved = _prepare_path(requested)
+        if resolved != requested:
+            raise Failure(Code.STORE)
+        return resolved
 
     def _initialize(self) -> None:
         if self._connection is not None:
@@ -88,6 +96,11 @@ class Database:
                 raise Failure(Code.SCHEMA)
             if len(applied) == len(migrations):
                 _check_integrity(conn)
+            if len(migrations) >= 7:
+                conn.execute("BEGIN IMMEDIATE")
+                with open_ledger(conn, self.deletion_path(), initialize=True) as ledger:
+                    reconcile(conn, ledger)
+                conn.commit()
             recover(conn, self.path)
             conn.execute("UPDATE turns SET state='interrupted',ended_at=CURRENT_TIMESTAMP WHERE state='active'")
             self._connection = conn

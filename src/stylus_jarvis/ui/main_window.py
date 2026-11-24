@@ -4,6 +4,8 @@ from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
                                QMenu, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
+from ..voice.controller import VoiceControls
+
 
 class MainWindow(QMainWindow):
     closing = Signal()
@@ -41,6 +43,9 @@ class MainWindow(QMainWindow):
         self.draft.setAccessibleName("Message")
         self.draft.setMaximumHeight(110)
         layout.addWidget(self.draft)
+        self.voice = VoiceControls(panel)
+        self.voice.capture_interrupted.connect(self.draft.setFocus)
+        layout.addWidget(self.voice)
         buttons = QHBoxLayout()
         self.send = QPushButton("Send")
         self.stop = QPushButton("Stop")
@@ -57,10 +62,28 @@ class MainWindow(QMainWindow):
         self.correct_personal = menu.addAction("Personal memory")
         self.correct_fact.setMenu(menu)
         memory.addWidget(self.correct_fact)
+        self.forget_fact = QPushButton("Forget a fact…")
+        forget_menu = QMenu(self.forget_fact)
+        self.forget_project = forget_menu.addAction("Project memory")
+        self.forget_personal = forget_menu.addAction("Personal memory")
+        self.forget_fact.setMenu(forget_menu)
+        memory.addWidget(self.forget_fact)
+        self.export_project = QPushButton("Export project…")
+        memory.addWidget(self.export_project)
         layout.addLayout(memory)
         for button in (self.send, self.stop, self.probe, self.retry, self.approve_source, self.extract_source):
             buttons.addWidget(button)
         layout.addLayout(buttons)
+        self.recovery_toggle = QPushButton("Recovery status")
+        self.recovery_toggle.setCheckable(True)
+        self.statusBar().addPermanentWidget(self.recovery_toggle)
+        self.recovery_view = QPlainTextEdit()
+        self.recovery_view.setAccessibleName("Recovery status")
+        self.recovery_view.setReadOnly(True)
+        self.recovery_view.setMaximumHeight(150)
+        self.recovery_view.hide()
+        layout.addWidget(self.recovery_view)
+        self.recovery_toggle.toggled.connect(self.recovery_view.setVisible)
         self.diagnostic_toggle = QPushButton("Local diagnostics")
         self.diagnostic_toggle.setAccessibleName("Local diagnostics")
         self.diagnostic_toggle.setCheckable(True)
@@ -75,6 +98,7 @@ class MainWindow(QMainWindow):
         panel.setEnabled(False)
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        self.voice.cancel()
         event.ignore()
         self.closing.emit()
 
