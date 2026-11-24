@@ -45,8 +45,10 @@ class MainWindow(QMainWindow):
         self.send = QPushButton("Send")
         self.stop = QPushButton("Stop")
         self.probe = QPushButton("Recheck model")
+        self.approve_source = QPushButton("Approve source file…")
+        self.extract_source = QPushButton("Save source excerpts…")
         self.retry = QPushButton("Retry save")
-        for button in (self.send, self.stop, self.probe, self.retry):
+        for button in (self.send, self.stop, self.probe, self.retry, self.approve_source, self.extract_source):
             buttons.addWidget(button)
         layout.addLayout(buttons)
         self.diagnostic_toggle = QPushButton("Local diagnostics")

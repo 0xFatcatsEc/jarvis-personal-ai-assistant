@@ -282,6 +282,16 @@ class DesktopTest(unittest.TestCase):
                 while not window.send.isEnabled() or not window.centralWidget().isEnabled():
                     await asyncio.sleep(0.02)
                 window.draft.setPlainText("Explain this project")
+                selected = root / "approved.txt"
+                selected.write_bytes(b"owner selected evidence")
+                with patch("stylus_jarvis.bootstrap.QFileDialog.getOpenFileName",
+                           return_value=(str(selected), "")):
+                    window.approve_source.click()
+                    while "Approved approved.txt" not in window.status.text():
+                        await asyncio.sleep(.02)
+                    window.extract_source.click()
+                    while "Saved locators: 1" not in window.status.text():
+                        await asyncio.sleep(.02)
                 QTest.mouseClick(window.send, Qt.MouseButton.LeftButton)
                 while "assistant [completed]" not in window.history.toPlainText():
                     await asyncio.sleep(0.02)

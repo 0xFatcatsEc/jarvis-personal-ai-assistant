@@ -159,10 +159,15 @@ class LocalStoreTests(unittest.IsolatedAsyncioTestCase):
         self.seed_v1()
         db = self.database(self.path)
         await db.open()
-        self.assertEqual(await db.call(lambda c: [r[0] for r in c.execute("SELECT version FROM migrations ORDER BY version")]), [1, 2])
+        self.assertEqual(await db.call(lambda c: [r[0] for r in c.execute("SELECT version FROM migrations ORDER BY version")]), [1, 2, 3, 4, 5])
         await db.call(lambda c: c.execute("UPDATE conversations SET title='after upgrade'").rowcount, write=True)
         await db.close()
         snapshot, = self.data.glob("*.pre-2-*.sqlite3")
+        foundation_snapshot, = self.data.glob("*.pre-3-*.sqlite3")
+        with closing(sqlite3.connect(foundation_snapshot.as_uri() + "?mode=ro", uri=True)) as prior:
+            self.assertEqual(prior.execute("SELECT max(version) FROM migrations").fetchone(), (2,))
+            self.assertEqual(prior.execute("SELECT title FROM conversations").fetchone(), ("original thread",))
+            self.assertIsNone(prior.execute("SELECT name FROM sqlite_master WHERE name='sources'").fetchone())
         # Stage rollback in a clean directory so no newer WAL/SHM is reused.
         restored = self.root / "restore" / self.path.name
         restored.parent.mkdir()

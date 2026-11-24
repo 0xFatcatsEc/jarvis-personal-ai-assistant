@@ -51,6 +51,8 @@ class Desktop:
         self.closing = False
         self.request: UUID | None = None
         self.view.add_project.clicked.connect(lambda: self.spawn(self.add_project))
+        self.view.approve_source.clicked.connect(lambda: self.spawn(self.approve_source))
+        self.view.extract_source.clicked.connect(lambda: self.spawn(lambda: self.approve_source(excerpts=True)))
         self.view.projects.currentIndexChanged.connect(lambda: self.change(True))
         self.view.threads.currentIndexChanged.connect(lambda: self.change(False))
         self.view.new_thread.clicked.connect(lambda: self.change(False, new=True))
@@ -83,6 +85,8 @@ class Desktop:
         task.add_done_callback(self.tasks.discard)
 
     def controls(self) -> None:
+        self.view.approve_source.setEnabled(bool(self.core.selection and not self.closing))
+        self.view.extract_source.setEnabled(self.view.approve_source.isEnabled())
         self.view.send.setEnabled(bool(self.core.selection and self.router.verified
                                       and not self.sending and self.core.pending is None
                                       and not self.core.scheduler.closing))
@@ -106,6 +110,23 @@ class Desktop:
         items = await self.store.projects(self.owner)
         self.populate(self.view.projects, items, selected)
         self.change(True)
+
+    async def approve_source(self, *, excerpts: bool = False) -> None:
+        scope = self.core.selection
+        if scope is None:
+            return
+        title = "Select a file to save revision excerpts locally" if excerpts else "Approve source file"
+        path, _ = QFileDialog.getOpenFileName(self.view, title, self.view.projects.currentText())
+        if path and self.core.selection == scope:
+            receipt = await self.store.approve_source(scope, Path(path))
+            if excerpts and self.core.selection == scope:
+                records = await self.store.extract_locators(scope, receipt.source_id, receipt.revision_id)
+                if self.core.selection == scope:
+                    self.view.status.setText(f"Saved locators: {len(records)} · Pages needing OCR: "
+                                             f"{sum(r.ocr_needed for r in records)}")
+                return
+            if self.core.selection == scope:
+                self.view.status.setText(f"Approved {receipt.relative_path} · revision {receipt.revision_id}")
 
     async def add_project(self) -> None:
         path = QFileDialog.getExistingDirectory(self.view, "Select a local project")

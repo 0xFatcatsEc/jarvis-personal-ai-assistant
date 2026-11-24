@@ -191,3 +191,31 @@ Backlog 1.3.2.2 is complete for the Windows checkout as of 2026-11-24. The local
 | Regression run | The Windows checkout ran 84 tests in 31.827 seconds, with 82 passes and two skips. The skipped checks required the opt-in native firewall/model runtime and permission to create a directory symlink. All diagnostic acceptance checks ran. |
 
 The packaging qualification above applies to the previously built bundle. This run exercised the updated checkout with deterministic provider frames and a real SQLite database. [Operator guide and repeatable commands](windows-bounded-diagnostics.md)
+
+## Phase 2 handoff and source registry verification
+
+**2.1.1.1 Assign source revisions is complete on the Windows checkout, 24 November 2026.** The first registry acceptance test approved a file, replaced it atomically, approved its new content, and verified one stable source ID and two distinct revision IDs. Both receipts and byte digests remained addressable after file deletion and database restart. Historical evidence at this stage consists of metadata.
+
+The suite also verified simultaneous approvals, project isolation, grant revocation during hashing, direct update refusal, desktop file approval, and preservation of the schema-2 conversation in the pre-upgrade snapshot. The final Windows run executed 87 tests in 31.726 seconds with 85 passes and two skips (opt-in live model/firewall and directory-symlink privilege). All source registry tests ran. This evidence covers the checkout. The installed Foundation bundle remains the separately qualified schema-2 artifact.
+
+The next item is **2.1.1.2 Extract page and text locators**. Feature 2.1 and PRD A2/A3 remain open. [Phase 2 technical design and acceptance criteria](phase-2-technical-design.md) · [Windows source registry tests](../tests/test_source_revisions.py)
+
+## Phase 2 locator verification
+
+**2.1.1.2 Extract page and text locators is complete on the Windows checkout.** Schema 4 retains versioned excerpts for explicitly selected source revisions. The Windows PDF case resolved page 2 after source deletion and database reopen, preserved the original three page numbers and flagged the image-only page for OCR. The text case recovered the second Unicode range after replacement and restart. Supplying its locator ID with the newer revision or another project's scope was denied. Concurrent extraction returned identical records. Changed source bytes and a grant revoked during extraction each prevented publication.
+
+The final Windows suite ran 90 tests in 34.506 seconds, with 88 passes and two skips (opt-in live firewall/model check and directory-symlink privilege). All locator acceptance checks and the Qt excerpt action passed. The evidence covers the checkout. The next backlog item is **2.1.2.1 Build scoped FTS5 index**. End-to-end retrieval and grounded citations still have their own acceptance gates. [Phase 2 design](phase-2-technical-design.md) · [Windows locator acceptance tests](../tests/test_evidence_locators.py)
+
+## Phase 2 scoped FTS5 verification
+
+**2.1.2.1 Build scoped FTS5 index is complete on the Windows checkout.** All six primary scenarios passed. Every text-bearing locator of the two-part fixture remained searchable after database reopen. An independent SQLite reader observed the old active revision and zero candidate matches after the writer inserted the first new posting. Aborting the second insertion left no partial historical or active result. Retry published both locators. Explicit replacement and rename switched active results, while revision-specific searches retained the old evidence.
+
+The same search term in two projects returned only each project's own locator. A foreign predecessor was denied. Revocation after extraction prevented publication and stale-grant search. The final suite ran 93 tests in 34.894 seconds, with 91 passes and two skips (opt-in live native firewall/model test and directory-symlink privilege). All scoped index tests ran. This records schema-5 checkout evidence. The next backlog item is **2.1.2.2 Assemble cited context**. [Design and repository APIs](phase-2-technical-design.md#2121-atomic-publication-in-scoped-fts5) · [Windows acceptance tests](../tests/test_scoped_index.py)
+
+## Phase 2 cited context verification
+
+**2.1.2.2 Assemble cited context is complete for the Windows checkout.** The repository assembles a bounded extractive bundle from schema-5 postings in a project-authorized snapshot. On the frozen two-project PDFs, all 16 grounded questions returned their expected fact on the first cited page, all four missing-evidence questions returned an empty insufficient-evidence bundle, and every returned citation resolved within its project. This qualifies retrieval for Feature 2.1. Generated-answer qualification remains part of the integrated A2 gate.
+
+Additional Windows tests grouped identical copies with both citations, merged overlapping ranges, retained disagreeing CSV and JSON claims in one project, resolved a retired revision and denied delivery after grant revocation. Exact UTF-8 payload and passage caps were exercised. The next sequential item is **2.2.1.1 Capture explicit scope**. [Technical design and API](phase-2-technical-design.md#2122-assemble-deduplicated-cited-context) · [Windows acceptance tests](../tests/test_cited_context.py)
+
+Final Windows regression evidence used a fresh interpreter for each module after shared-process reruns failed to finish. All 96 tests were accounted for, with 94 passes and two existing skips (live native firewall/model qualification and Windows directory-symlink permission). The standalone cited-context suite also passed all three tests.

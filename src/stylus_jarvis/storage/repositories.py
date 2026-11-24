@@ -2,16 +2,28 @@
 import asyncio
 import os
 import sqlite3
+from dataclasses import astuple, dataclass
 from pathlib import Path
 from uuid import UUID, uuid4
 
 from ..contracts.messages import ChatMessage, Code, Failure, PendingSave, Scope, State, Turn
 from ..settings import check_local_route
+from ..knowledge.ingestion import SourceRevision, fingerprint
+from ..knowledge.locators import Locator, extract
+from ..knowledge.context import Citation, EvidenceBundle, Passage, assemble, concepts
 from .database import Database
 from . import recovery
 
 
 _DISPLAY_STATE = "CASE WHEN t.state='failed' AND t.error='token_limit' THEN 'token_limit' ELSE t.state END"
+
+
+@dataclass(frozen=True, slots=True)
+class SearchHit:
+    source: str
+    revision: str
+    locator: str
+    relative_path: str
 
 
 def _authorize(conn: sqlite3.Connection, scope: Scope) -> None:
@@ -72,6 +84,195 @@ class Repositories:
     async def projects(self, owner: str) -> list[tuple[str, str]]:
         return await self.db.call(lambda c: [(r[0], r[1]) for r in c.execute(
             "SELECT id,root FROM projects WHERE owner=? ORDER BY root", (owner,))])
+
+    async def approve_source(self, scope: Scope, selected: Path) -> SourceRevision:
+        """Register the current content of a file explicitly selected by the owner."""
+        def approved_root(conn: sqlite3.Connection) -> Path:
+            _authorize(conn, scope)
+            return Path(conn.execute("SELECT root FROM projects WHERE id=?", (scope.project,)).fetchone()[0])
+
+        root = await self.db.call(approved_root)
+        relative, digest, size = await asyncio.to_thread(fingerprint, root, selected)
+
+        def record(conn: sqlite3.Connection) -> SourceRevision:
+            _authorize(conn, scope)
+            conn.execute("INSERT INTO sources VALUES(?,?,?) ON CONFLICT(project,relative_path) DO NOTHING",
+                         (uuid4().hex, scope.project, relative))
+            source = conn.execute("SELECT id FROM sources WHERE project=? AND relative_path=?",
+                                  (scope.project, relative)).fetchone()[0]
+            conn.execute("INSERT INTO source_revisions VALUES(?,?,?,?) ON CONFLICT(source,sha256) DO NOTHING",
+                         (uuid4().hex, source, digest, size))
+            revision = conn.execute("SELECT id FROM source_revisions WHERE source=? AND sha256=?",
+                                    (source, digest)).fetchone()[0]
+            return SourceRevision(source, revision, relative, digest, size)
+
+        receipt = await self.db.call(record, write=True)
+        await self.validate(scope)
+        return receipt
+
+    async def source_revision(self, scope: Scope, source_id: str, revision_id: str) -> SourceRevision:
+        def fetch(conn: sqlite3.Connection) -> SourceRevision:
+            _authorize(conn, scope)
+            row = conn.execute("SELECT s.id,r.id,s.relative_path,r.sha256,r.byte_count FROM sources s "
+                               "JOIN source_revisions r ON r.source=s.id WHERE s.project=? AND s.id=? AND r.id=?",
+                               (scope.project, source_id, revision_id)).fetchone()
+            if row is None:
+                raise Failure(Code.SCOPE)
+            return SourceRevision(*row)
+        revision = await self.db.call(fetch)
+        await self.validate(scope)
+        return revision
+
+    @staticmethod
+    def _locators(conn: sqlite3.Connection, scope: Scope, source: str, revision: str,
+                  locator: str | None = None) -> list[Locator]:
+        _authorize(conn, scope)
+        sql = ("SELECT l.id,l.revision,l.extractor,l.page,l.start,l.end,l.excerpt,l.ocr_needed "
+               "FROM evidence_locators l JOIN source_revisions r ON r.id=l.revision "
+               "JOIN sources s ON s.id=r.source WHERE s.project=? AND s.id=? AND r.id=?")
+        args = [scope.project, source, revision]
+        if locator is not None:
+            sql += " AND l.id=?"
+            args.append(locator)
+        return [Locator(*row[:-1], bool(row[-1])) for row in conn.execute(sql + " ORDER BY l.page,l.start", args)]
+
+    async def extract_locators(self, scope: Scope, source: str, revision: str) -> list[Locator]:
+        approved = await self.source_revision(scope, source, revision)
+
+        def prepare(conn: sqlite3.Connection) -> tuple[Path, list[Locator]]:
+            cached = self._locators(conn, scope, source, revision)
+            root = conn.execute("SELECT root FROM projects WHERE id=?", (scope.project,)).fetchone()[0]
+            return Path(root), cached
+
+        root, records = await self.db.call(prepare)
+        if not records:
+            extracted = await asyncio.to_thread(extract, root, approved)
+
+            def publish(conn: sqlite3.Connection) -> list[Locator]:
+                existing = self._locators(conn, scope, source, revision)
+                if existing:
+                    return existing
+                conn.executemany("INSERT INTO evidence_locators "
+                                 "(id,revision,extractor,page,start,end,excerpt,ocr_needed) VALUES(?,?,?,?,?,?,?,?)",
+                                 (astuple(item) for item in extracted))
+                return extracted
+
+            records = await self.db.call(publish, write=True)
+        await self.validate(scope)
+        return records
+
+    async def resolve_locator(self, scope: Scope, source: str, revision: str, locator: str) -> Locator:
+        records = await self.db.call(lambda c: self._locators(c, scope, source, revision, locator))
+        if not records:
+            raise Failure(Code.SCOPE)
+        await self.validate(scope)
+        return records[0]
+
+    async def publish_revision(self, scope: Scope, source: str, revision: str, *,
+                               replaces: tuple[str, str] | None = None) -> None:
+        """Activate a complete extracted revision. Supply the old active pair for a replacement or move."""
+        def publish(conn: sqlite3.Connection) -> None:
+            _authorize(conn, scope)
+            target = conn.execute(
+                "SELECT 1 FROM sources s JOIN source_revisions r ON s.id=r.source "
+                "WHERE s.project=? AND s.id=? AND r.id=?", (scope.project, source, revision)).fetchone()
+            if target is None:
+                raise Failure(Code.SCOPE)
+            if replaces is not None and not conn.execute(
+                "SELECT 1 FROM source_revisions r JOIN sources s ON s.id=r.source "
+                "WHERE r.source=? AND r.id=? AND s.project=?", (*replaces, scope.project)
+            ).fetchone():
+                raise Failure(Code.SCOPE)
+            current = conn.execute("SELECT revision FROM active_evidence WHERE source=?", (source,)).fetchone()
+            if current and current[0] == revision:
+                if replaces and replaces[0] != source:
+                    prior = conn.execute("SELECT a.revision FROM active_evidence a JOIN sources s ON s.id=a.source "
+                                         "WHERE s.project=? AND s.id=?", (scope.project, replaces[0])).fetchone()
+                    if prior and prior[0] != replaces[1]:
+                        raise Failure(Code.CONFLICT)
+                    if prior:
+                        conn.execute("DELETE FROM active_evidence WHERE source=? AND revision=?", replaces)
+                return
+            if current and replaces != (source, current[0]):
+                raise Failure(Code.CONFLICT)
+            indexed = conn.execute("SELECT 1 FROM evidence_locators l JOIN indexed_locators i ON i.locator=l.id "
+                                   "WHERE l.revision=? LIMIT 1", (revision,)).fetchone()
+            if indexed and replaces is None:
+                raise Failure(Code.CONFLICT)
+            if replaces is not None:
+                removed = conn.execute("DELETE FROM active_evidence WHERE source=? AND revision=? AND source IN "
+                                       "(SELECT id FROM sources WHERE project=?)", (*replaces, scope.project))
+                if removed.rowcount != 1:
+                    raise Failure(Code.CONFLICT)
+            if not indexed:
+                inserted = conn.execute("INSERT INTO indexed_locators(locator) "
+                                        "SELECT id FROM evidence_locators WHERE revision=?", (revision,))
+                if not inserted.rowcount:
+                    raise Failure(Code.CONFLICT)
+            conn.execute("INSERT INTO active_evidence(source,revision) VALUES(?,?)", (source, revision))
+
+        await self.db.call(publish, write=True)
+        await self.validate(scope)
+
+    async def search_evidence(self, scope: Scope, phrase: str, *, revision: str | None = None,
+                              limit: int = 50) -> list[SearchHit]:
+        """Literal phrase search of active sources, or of one explicitly named published revision."""
+        if not phrase.strip() or len(phrase) > 512 or "\x00" in phrase or not 1 <= limit <= 200:
+            raise Failure(Code.INPUT)
+        literal = '"' + phrase.replace('"', '""') + '"'
+
+        def search(conn: sqlite3.Connection) -> list[SearchHit]:
+            _authorize(conn, scope)
+            query = ("SELECT s.id,r.id,l.id,s.relative_path FROM evidence_fts "
+                     "JOIN indexed_locators i ON i.posting=evidence_fts.rowid "
+                     "JOIN evidence_locators l ON l.id=i.locator JOIN source_revisions r ON r.id=l.revision "
+                     "JOIN sources s ON s.id=r.source ")
+            args = [scope.project, literal]
+            if revision is None:
+                query += "JOIN active_evidence a ON a.revision=r.id AND a.source=s.id "
+            query += "WHERE s.project=? AND evidence_fts MATCH ? "
+            if revision is not None:
+                query += "AND r.id=? "
+                args.append(revision)
+            return [SearchHit(*row) for row in conn.execute(
+                query + "ORDER BY s.relative_path,l.page,l.start LIMIT ?", (*args, limit))]
+
+        hits = await self.db.call(search)
+        await self.validate(scope)
+        return hits
+
+    async def cited_context(self, scope: Scope, question: str, *, revision: str | None = None,
+                            max_bytes: int = 8192, max_passages: int = 8) -> EvidenceBundle:
+        if not question.strip() or len(question) > 512 or not 2 <= max_bytes <= 65536 or not 1 <= max_passages <= 32:
+            raise Failure(Code.INPUT)
+        terms = concepts(question)
+        if len(terms) > 32:
+            raise Failure(Code.INPUT)
+
+        def read(conn: sqlite3.Connection) -> EvidenceBundle:
+            _authorize(conn, scope)
+            if not terms:
+                return EvidenceBundle(())
+            matches = " UNION ALL ".join("SELECT rowid FROM evidence_fts WHERE evidence_fts MATCH ?" for _ in terms)
+            selection = "AND r.id=?" if revision is not None else (
+                "AND EXISTS(SELECT 1 FROM active_evidence a WHERE a.source=s.id AND a.revision=r.id)")
+            sql = f"""WITH matches(posting) AS ({matches})
+                SELECT s.id,r.id,l.id,s.relative_path,l.page,l.start,l.end,l.excerpt
+                FROM matches JOIN indexed_locators i ON i.posting=matches.posting
+                JOIN evidence_locators l ON l.id=i.locator JOIN source_revisions r ON r.id=l.revision
+                JOIN sources s ON s.id=r.source WHERE s.project=? AND l.ocr_needed=0 {selection}
+                GROUP BY l.id HAVING count(*) > ?
+                ORDER BY count(*) DESC,s.relative_path,l.page,l.start,l.id"""
+            args = [*terms, scope.project]
+            if revision is not None:
+                args.append(revision)
+            rows = conn.execute(sql, (*args, len(terms) // 2))
+            candidates = (Passage(row[-1], (Citation(*row[:-1]),)) for row in rows)
+            return assemble(candidates, max_bytes, max_passages)
+
+        bundle = await self.db.call(read)
+        await self.validate(scope)
+        return bundle
 
     async def conversations(self, owner: str, project: str) -> list[tuple[str, str]]:
         return await self.db.call(lambda c: [(r[0], r[1]) for r in c.execute(
