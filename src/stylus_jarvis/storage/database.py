@@ -103,6 +103,10 @@ class Database:
                 conn.commit()
             recover(conn, self.path)
             conn.execute("UPDATE turns SET state='interrupted',ended_at=CURRENT_TIMESTAMP WHERE state='active'")
+            if len(migrations) >= 9:
+                conn.execute("UPDATE local_tool_runs SET state=CASE WHEN state='dispatching' "
+                             "AND tool='system.open_approved_project' THEN 'uncertain' ELSE 'interrupted' END,"
+                             "ended_at=CURRENT_TIMESTAMP WHERE state IN ('requested','dispatching')")
             self._connection = conn
         except (OSError, sqlite3.Error) as exc:
             raise Failure(Code.STORE) from exc

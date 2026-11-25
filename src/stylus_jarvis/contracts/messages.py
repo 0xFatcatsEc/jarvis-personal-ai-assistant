@@ -11,6 +11,8 @@ class Code(StrEnum):
     BUSY = "busy"
     SCOPE = "scope"
     INPUT = "input"
+    EVIDENCE = "insufficient_evidence"
+    EDITOR = "editor_unavailable"
     CONFLICT = "conflict"
     MODEL = "model_unavailable"
     OFFLINE = "offline_policy"
@@ -28,6 +30,8 @@ ACTIONS = {
     Code.BUSY: "Wait for the current operation to finish.",
     Code.SCOPE: "Select an available project and conversation again.",
     Code.INPUT: "Shorten or correct the message and try again.",
+    Code.EVIDENCE: "No retained code fits this request. Save source excerpts or choose a smaller revision or question.",
+    Code.EDITOR: "Could not open VS Code. Check that a trusted Microsoft VS Code installation is available.",
     Code.CONFLICT: "Refresh the conversation before submitting a new request.",
     Code.MODEL: "Start local Ollama and provision the pinned Qwen model, then recheck.",
     Code.DIGEST: "Provision the model revision specified in the release manifest.",
@@ -38,11 +42,11 @@ ACTIONS = {
 
 
 class Failure(Exception):
-    def __init__(self, code: Code, *, field: str = "") -> None:
+    def __init__(self, code: Code, *, field: str = "", detail: str = "") -> None:
         self.code = code
         self.reference = uuid4()
         self.field = field
-        super().__init__(ACTIONS[code] + (f" Field: {field}." if field else ""))
+        super().__init__((detail or ACTIONS[code]) + (f" Field: {field}." if field else ""))
 
 
 class State(StrEnum):
@@ -62,6 +66,12 @@ class Scope:
     grant: int
     generation: int
     offline: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class SavedCode:
+    source: str
+    revision: str
 
 
 @dataclass(frozen=True, slots=True)

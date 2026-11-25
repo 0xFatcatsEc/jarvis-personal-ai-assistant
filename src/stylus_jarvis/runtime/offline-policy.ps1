@@ -75,14 +75,27 @@ foreach ($image in $images) {
     Assert-ProgramRule $image
 }
 
-if ($Mode -eq 'Verify') {
-    $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $Port)
-    $matches = @($listeners | Where-Object { $_.LocalAddress -eq $ListenAddress.IPAddressToString })
-    if ($matches.Count -ne 1 -or (Get-Process -Id $matches[0].OwningProcess).Path -ne $server) {
-        throw 'The configured loopback listener must belong to the guarded headless Ollama executable.'
-    }
+if ($Mode -in @('Verify', 'Serve')) {
+    $listeners = @(Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -eq $Port })
     if (@($listeners | Where-Object { -not [ipaddress]::IsLoopback([ipaddress]$_.LocalAddress) }).Count) {
         throw 'A non-loopback listener is bound to the model port.'
+    }
+    $matches = @($listeners | Where-Object { $_.LocalAddress -eq $ListenAddress.IPAddressToString })
+    if ($Mode -eq 'Verify' -and $matches.Count -eq 0) {
+        Write-Error 'The guarded model endpoint is not listening.' -ErrorAction Continue
+        exit 22
+    }
+    if ($matches.Count -gt 0) {
+        $guarded = $matches.Count -eq 1 -and (Get-Process -Id $matches[0].OwningProcess).Path -eq $server
+        if (-not $guarded) {
+            Write-Error ("Another program owns the configured model endpoint on port $Port. Use a free loopback port " +
+                'in the STYLUS JARVIS settings, then launch the guarded model and restart the desktop.') -ErrorAction Continue
+            exit 21
+        }
+        if ($Mode -eq 'Serve') {
+            Write-Output "The guarded model server is already listening on port $Port."
+            exit 0
+        }
     }
 }
 if ($Mode -eq 'Serve') {

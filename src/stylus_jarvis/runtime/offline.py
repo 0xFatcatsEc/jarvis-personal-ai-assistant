@@ -78,6 +78,25 @@ def whoami() -> bytes:
     return _run([str(_system_directory() / "whoami.exe"), "/user", "/fo", "csv", "/nh"], 5).stdout
 
 
+def open_vscode_window(image: Path, root: Path) -> None:
+    """Dispatch the fixed command after the desktop broker has pinned both paths."""
+    if (os.name != "nt" or not image.is_absolute() or image.name != "Code.exe" or not root.is_absolute()):
+        raise Failure(Code.EDITOR)
+    args = [str(image), "--new-window", "--disable-extensions", "--disable-telemetry", "--disable-updates", str(root)]
+    inherited = ("SystemRoot", "windir", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "TEMP", "TMP",
+                 "ProgramFiles", "ProgramW6432", "ProgramData", "ComSpec", "PATHEXT", "PATH", "OS",
+                 "HOMEDRIVE", "HOMEPATH", "USERNAME", "USERDOMAIN", "PROCESSOR_ARCHITECTURE")
+    environment = {key: os.environ[key] for key in inherited if key in os.environ}
+    token = _approved_command.set(subprocess.list2cmdline(args))
+    try:
+        subprocess.Popen(args, executable=str(image), cwd=image.parent, env=environment,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError as error:
+        raise Failure(Code.EDITOR) from error
+    finally:
+        _approved_command.reset(token)
+
+
 def run_whisper_worker(root: Path, pcm: bytes, cancel: threading.Event) -> bytes:
     return _run_voice_worker("whisper_worker", root, pcm, cancel, 45)
 
@@ -127,6 +146,20 @@ def _check_windows(arguments: list[str]) -> None:
     try:
         _run([str(powershell), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "RemoteSigned", "-File", str(checker),
               "-PythonImage", image.value, *arguments], 30)
+    except subprocess.CalledProcessError as exc:
+        # Only the Verify checker emits these dedicated readiness exit codes.
+        if arguments[:2] == ["-Mode", "Verify"]:
+            if exc.returncode == 21:
+                raise Failure(
+                    Code.OFFLINE,
+                    detail="Offline policy blocked the model: another program owns the configured loopback endpoint. "
+                           "Set a free port in the STYLUS JARVIS settings, then start the guarded model and reopen "
+                           "the desktop.",
+                ) from exc
+            if exc.returncode == 22:
+                raise Failure(Code.MODEL, detail="The guarded model is not listening. Run "
+                              "start-offline.ps1 -Component Model, then choose Recheck model.") from exc
+        raise Failure(Code.OFFLINE) from exc
     except (OSError, subprocess.SubprocessError) as exc:
         raise Failure(Code.OFFLINE) from exc
 

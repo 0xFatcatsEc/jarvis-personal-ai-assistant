@@ -159,10 +159,20 @@ class LocalStoreTests(unittest.IsolatedAsyncioTestCase):
         self.seed_v1()
         db = self.database(self.path)
         await db.open()
-        self.assertEqual(await db.call(lambda c: [r[0] for r in c.execute("SELECT version FROM migrations ORDER BY version")]), [1, 2, 3, 4, 5, 6, 7])
+        self.assertEqual(await db.call(lambda c: [r[0] for r in c.execute("SELECT version FROM migrations ORDER BY version")]), list(range(1, 10)))
         await db.call(lambda c: c.execute("UPDATE conversations SET title='after upgrade'").rowcount, write=True)
         await db.close()
         snapshot, = self.data.glob("*.pre-2-*.sqlite3")
+        pre_tool_journal, = self.data.glob("*.pre-9-*.sqlite3")
+        with closing(sqlite3.connect(pre_tool_journal.as_uri() + "?mode=ro", uri=True)) as prior:
+            self.assertEqual(prior.execute("SELECT max(version) FROM migrations").fetchone(), (8,))
+            self.assertIsNone(prior.execute("SELECT name FROM sqlite_master WHERE name='local_tool_runs'").fetchone())
+        pre_editor, = self.data.glob("*.pre-8-*.sqlite3")
+        with closing(sqlite3.connect(pre_editor.as_uri() + "?mode=ro", uri=True)) as prior:
+            self.assertEqual(prior.execute("SELECT max(version) FROM migrations").fetchone(), (7,))
+            self.assertEqual(prior.execute("SELECT title FROM conversations").fetchone(), ("original thread",))
+            self.assertIsNone(prior.execute("SELECT name FROM sqlite_master WHERE name='editor_patch_operations'")
+                              .fetchone())
         pre_memory, = self.data.glob("*.pre-6-*.sqlite3")
         with closing(sqlite3.connect(pre_memory.as_uri() + "?mode=ro", uri=True)) as prior:
             self.assertEqual(prior.execute("SELECT max(version) FROM migrations").fetchone(), (5,))

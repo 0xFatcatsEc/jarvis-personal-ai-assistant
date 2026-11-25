@@ -184,6 +184,21 @@ class OfflinePolicyTests(unittest.IsolatedAsyncioTestCase):
                 await asyncio.to_thread(verify_listener, "127.0.0.1", listener.sockets[0].getsockname()[1])
             self.assertEqual(denied.exception.code, Code.OFFLINE)
 
+    async def test_listener_failure_explains_port_conflict_or_missing_server(self) -> None:
+        for status, code, message in (
+            (21, Code.OFFLINE, "another program owns the configured loopback endpoint"),
+            (22, Code.MODEL, "guarded model is not listening"),
+            (1, Code.OFFLINE, "Windows Firewall rules"),
+        ):
+            with (self.subTest(status=status),
+                  patch("stylus_jarvis.runtime.offline._run",
+                        side_effect=subprocess.CalledProcessError(status, "checker", stderr=b"private detail")),
+                  self.assertRaises(Failure) as failure):
+                verify_listener("127.0.0.1", 11434)
+            self.assertEqual(failure.exception.code, code)
+            self.assertIn(message, str(failure.exception))
+            self.assertNotIn("private detail", str(failure.exception))
+
     @unittest.skipUnless(os.getenv("STYLUS_NATIVE_ACCEPTANCE") == "1",
                          "requires the provisioned private MSI runtime and effective outbound rules")
     async def test_live_guarded_qwen_and_native_denial(self) -> None:

@@ -33,12 +33,17 @@ class VoiceControls(QWidget):
         self.talk = QPushButton("Hold to record")
         self.recording = QLabel()
         self.recording.setAccessibleName("Microphone status")
+        self.recording.setWordWrap(True)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         devices = QHBoxLayout()
-        devices.addWidget(QLabel("Microphone"))
+        microphone_label = QLabel("&Microphone")
+        microphone_label.setBuddy(self.microphone)
+        devices.addWidget(microphone_label)
         devices.addWidget(self.microphone, 1)
-        devices.addWidget(QLabel("Push-to-talk"))
+        key_label = QLabel("Push-to-&talk")
+        key_label.setBuddy(self.hotkey)
+        devices.addWidget(key_label)
         devices.addWidget(self.hotkey)
         layout.addLayout(devices)
         feedback = QHBoxLayout()
@@ -47,6 +52,8 @@ class VoiceControls(QWidget):
         layout.addLayout(feedback)
         self.talk.pressed.connect(lambda: self._begin("button"))
         self.talk.released.connect(lambda: self._end("button"))
+        self.hotkey.currentTextChanged.connect(self._show_hold_key)
+        self._show_hold_key(self.hotkey.currentText())
         self._capture.failed.connect(self._failed)
         self._capture.inputs_changed.connect(self.refresh)
         self._timer = QTimer(self)
@@ -56,6 +63,10 @@ class VoiceControls(QWidget):
         if app is not None:
             app.installEventFilter(self)
         self.refresh()
+
+    def _show_hold_key(self, key: str) -> None:
+        self.talk.setText(f"Hold to record ({key})")
+        self.talk.setAccessibleDescription(f"Hold {key} while JARVIS is focused to record, then release.")
 
     def refresh(self) -> None:
         if self._trigger is not None:
@@ -90,7 +101,7 @@ class VoiceControls(QWidget):
             self._status("Playback active. Stop speech before recording.")
             return
         selected = self.microphone.currentIndex()
-        if self._trigger is not None or selected < 0 or not self.isEnabled():
+        if self._trigger is not None or selected < 0 or not self.isEnabled() or not self.isVisible():
             return
         if not self._capture.start(self._devices[selected]):
             self._status("Could not start microphone. Continue by typing.")
@@ -156,7 +167,7 @@ class VoiceControls(QWidget):
             self.cancel()
         if (kind in (QEvent.Type.KeyPress, QEvent.Type.KeyRelease) and isinstance(event, QKeyEvent)
                 and isinstance(watched, QWidget) and watched.window() is window and window.isActiveWindow()
-                and event.key() == self.hotkey.currentData() and self.isEnabled()):
+                and event.key() == self.hotkey.currentData() and self.isEnabled() and self.isVisible()):
             if event.isAutoRepeat():
                 return True
             if kind == QEvent.Type.KeyRelease:

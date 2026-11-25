@@ -40,7 +40,8 @@ class Ollama:
             async with asyncio.timeout(3):
                 status = await self._metadata("/api/status")
                 if not isinstance(status.get("cloud"), dict) or status["cloud"].get("disabled") is not True:
-                    raise Failure(Code.OFFLINE)
+                    raise Failure(Code.OFFLINE, detail="Offline policy blocked the model: Ollama did not confirm "
+                                  "that cloud features are disabled. Start it with the guarded model launcher.")
                 models = (await self._metadata("/api/tags"))["models"]
                 for model in models:
                     if model["name"] == self.manifest.model:

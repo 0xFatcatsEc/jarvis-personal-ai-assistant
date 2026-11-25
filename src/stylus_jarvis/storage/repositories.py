@@ -136,6 +136,39 @@ class Repositories:
         await self.validate(scope)
         return revision
 
+    async def saved_code_revisions(self, scope: Scope) -> list[SourceRevision]:
+        def read(conn: sqlite3.Connection) -> list[SourceRevision]:
+            _authorize(conn, scope)
+            rows = conn.execute(
+                "SELECT s.id,r.id,s.relative_path,r.sha256,r.byte_count FROM sources s "
+                "JOIN source_revisions r ON r.source=s.id WHERE s.project=? AND EXISTS "
+                "(SELECT 1 FROM evidence_locators l WHERE l.revision=r.id AND l.page IS NULL "
+                "AND l.ocr_needed=0 AND trim(l.excerpt)<>'') ORDER BY s.relative_path,r.rowid DESC",
+                (scope.project,))
+            return [SourceRevision(*row) for row in rows]
+
+        revisions = await self.db.call(read)
+        await self.validate(scope)
+        return revisions
+
+    async def saved_code_context(self, scope: Scope, source: str, revision: str, max_bytes: int) -> EvidenceBundle:
+        if not 2 <= max_bytes <= 65536:
+            raise Failure(Code.INPUT)
+
+        def read(conn: sqlite3.Connection) -> EvidenceBundle:
+            _authorize(conn, scope)
+            rows = conn.execute(
+                "SELECT s.id,r.id,l.id,s.relative_path,l.page,l.start,l.end,l.excerpt "
+                "FROM evidence_locators l JOIN source_revisions r ON r.id=l.revision "
+                "JOIN sources s ON s.id=r.source WHERE s.project=? AND s.id=? AND r.id=? "
+                "AND l.page IS NULL AND l.ocr_needed=0 AND trim(l.excerpt)<>'' ORDER BY l.start LIMIT 32",
+                (scope.project, source, revision))
+            return assemble((Passage(row[-1], (Citation(*row[:-1]),)) for row in rows), max_bytes, 8)
+
+        bundle = await self.db.call(read)
+        await self.validate(scope)
+        return bundle
+
     @staticmethod
     def _locators(conn: sqlite3.Connection, scope: Scope, source: str, revision: str,
                   locator: str | None = None) -> list[Locator]:
@@ -496,12 +529,15 @@ class Repositories:
             return scope
         return await self.db.call(select, write=conversation is None)
 
-    async def validate(self, scope: Scope, *, require_root: bool = False) -> None:
+    async def approved_project_root(self, scope: Scope) -> Path:
         def validate(conn: sqlite3.Connection) -> str:
             _authorize(conn, scope)
             return str(conn.execute("SELECT root FROM projects WHERE id=?", (scope.project,)).fetchone()[0])
+        return Path(await self.db.call(validate))
+
+    async def validate(self, scope: Scope, *, require_root: bool = False) -> None:
         if require_root:
-            path = Path(await self.db.call(validate))
+            path = await self.approved_project_root(scope)
             def check_root() -> None:
                 check_local_route(path)
                 if not path.is_dir():

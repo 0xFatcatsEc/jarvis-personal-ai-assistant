@@ -18,6 +18,15 @@ Start the desktop in a second normal terminal.
 
 Both read `%LOCALAPPDATA%\StylusJarvis\config\settings.toml`. The default endpoint is `127.0.0.1:11434`. If the user's tray service owns that port, choose a free port such as `11436` in the existing settings file (`port = 11436`) and relaunch the two components. For a new profile the settings file can contain just that line. The verifier rejects a listener owned by another program, even on loopback. The desktop can reopen history when the private server is stopped. Close the desktop normally and stop the foreground model using Ctrl+C.
 
+**If `ollama run qwen3:4b` works but JARVIS reports the endpoint is owned by another program**, inspect its owner in PowerShell. Substitute the port from the JARVIS settings if it differs from the default.
+
+```powershell
+Get-NetTCPConnection -State Listen -LocalPort 11434 |
+    ForEach-Object { Get-Process -Id $_.OwningProcess | Select-Object Id, Path }
+```
+
+The tray installation usually runs from `%LOCALAPPDATA%\Programs\Ollama`. JARVIS requires the headless executable under `%LOCALAPPDATA%\StylusJarvis\runtime\ollama` and checks cloud status before sending data. A successful Ollama CLI request confirms model availability for the server it reached. If that server is the tray installation, keep it on its own port and start JARVIS on a free loopback port. After restarting the desktop, **Recheck model** can recover from a stopped guarded server on the configured endpoint.
+
 ## Prepare another Windows development machine
 
 Begin with this repository's working Python 3.12 environment in `.venv`, the M0-verified local model store and the M0 Ollama 0.40.17 per-user installation. Use the *same Windows account* for staging, rule installation and desktop execution. Rules bind to absolute image paths. These steps copy files already present on disk.
