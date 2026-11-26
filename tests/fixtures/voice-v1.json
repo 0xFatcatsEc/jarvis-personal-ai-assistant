@@ -1,0 +1,5 @@
+[
+  {"id": "V01", "sentence": "The database stores checkout records.", "terms": ["database", "checkout records"]},
+  {"id": "V02", "sentence": "Python uses Unicode to represent text.", "terms": ["python", "unicode"]},
+  {"id": "V03", "sentence": "The offline queue synchronizes when the connection returns.", "terms": ["offline queue", "connection"]}
+]

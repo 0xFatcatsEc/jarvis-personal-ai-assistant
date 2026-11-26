@@ -1,0 +1,301 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "STYLUS JARVIS editor protocol v1",
+  "description": "One UTF-8 JSON object per frame. Four-byte unsigned little-endian length, from 1 through 4096. Deadlines must be within five seconds and IDs increase on one connection.",
+  "oneOf": [
+    { "$ref": "#/$defs/pair" },
+    { "$ref": "#/$defs/ping" },
+    { "$ref": "#/$defs/snapshot_request" },
+    { "$ref": "#/$defs/patch_request" },
+    { "$ref": "#/$defs/patch_recovery_request" },
+    { "$ref": "#/$defs/paired" },
+    { "$ref": "#/$defs/paired_for_snapshot" },
+    { "$ref": "#/$defs/pong" },
+    { "$ref": "#/$defs/patch_receipt" },
+    { "$ref": "#/$defs/patch_recovery_receipt" },
+    { "$ref": "#/$defs/refused" }
+  ],
+  "$defs": {
+    "id": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+    "session": { "type": "string", "minLength": 32, "maxLength": 32, "pattern": "^[0-9a-f]+$" },
+    "coordinate": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+    "binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["project", "conversation", "generation", "grant"],
+      "properties": {
+        "project": { "$ref": "#/$defs/session" },
+        "conversation": { "$ref": "#/$defs/session" },
+        "generation": { "$ref": "#/$defs/coordinate" },
+        "grant": { "$ref": "#/$defs/coordinate" }
+      }
+    },
+    "position": {
+      "type": "object", "additionalProperties": false, "required": ["line", "character"],
+      "properties": {
+        "line": { "$ref": "#/$defs/coordinate" },
+        "character": { "$ref": "#/$defs/coordinate" }
+      }
+    },
+    "metadata": {
+      "type": "object", "additionalProperties": false,
+      "required": ["workspace_uri", "document_uri", "document_id", "document_version", "dirty",
+                   "sha256", "selection", "diagnostics"],
+      "properties": {
+        "workspace_uri": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "document_uri": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "document_id": { "$ref": "#/$defs/session" },
+        "document_version": { "$ref": "#/$defs/id" },
+        "dirty": { "type": "boolean" },
+        "sha256": { "type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]+$" },
+        "selection": {
+          "type": "object", "additionalProperties": false, "required": ["anchor", "active"],
+          "properties": {
+            "anchor": { "$ref": "#/$defs/position" },
+            "active": { "$ref": "#/$defs/position" }
+          }
+        },
+        "diagnostics": {
+          "type": "array", "maxItems": 4,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["start", "end", "severity", "message"],
+            "properties": {
+              "start": { "$ref": "#/$defs/position" },
+              "end": { "$ref": "#/$defs/position" },
+              "severity": { "type": "integer", "minimum": 0, "maximum": 3 },
+              "message": { "type": "string", "minLength": 1, "maxLength": 120 }
+            }
+          }
+        }
+      }
+    },
+    "pair": {
+      "type": "object", "additionalProperties": false,
+      "required": ["operation", "request_id", "deadline_ms", "versions", "invitation"],
+      "properties": {
+        "operation": { "const": "pair" },
+        "request_id": { "$ref": "#/$defs/id" },
+        "deadline_ms": { "type": "integer", "minimum": 1 },
+        "versions": {
+          "type": "array", "minItems": 1, "maxItems": 8,
+          "contains": { "const": 1 },
+          "items": { "type": "integer", "minimum": 1, "maximum": 255 }
+        },
+        "invitation": { "type": "string", "minLength": 43, "maxLength": 43, "pattern": "^[A-Za-z0-9_-]+$" },
+        "window": { "$ref": "#/$defs/session" },
+        "patches": { "const": true }
+      },
+      "dependentRequired": { "patches": ["window"] }
+    },
+    "ping": {
+      "type": "object", "additionalProperties": false,
+      "required": ["operation", "request_id", "deadline_ms", "version", "session"],
+      "properties": {
+        "operation": { "const": "ping" },
+        "request_id": { "$ref": "#/$defs/id" },
+        "deadline_ms": { "type": "integer", "minimum": 1 },
+        "version": { "const": 1 },
+        "session": { "$ref": "#/$defs/session" }
+      }
+    },
+    "paired": {
+      "type": "object", "additionalProperties": false,
+      "required": ["request_id", "version", "session", "capabilities"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/id" },
+        "version": { "const": 1 },
+        "session": { "$ref": "#/$defs/session" },
+        "capabilities": { "const": ["ping"] }
+      }
+    },
+    "snapshot_request": {
+      "type": "object", "additionalProperties": false,
+      "required": ["operation", "request_id", "deadline_ms", "version", "session", "window", "binding", "snapshot"],
+      "properties": {
+        "operation": { "const": "snapshot" },
+        "request_id": { "$ref": "#/$defs/id" },
+        "deadline_ms": { "type": "integer", "minimum": 1 },
+        "version": { "const": 1 },
+        "session": { "$ref": "#/$defs/session" },
+        "window": { "$ref": "#/$defs/session" },
+        "binding": { "$ref": "#/$defs/binding" },
+        "snapshot": { "$ref": "#/$defs/metadata" }
+      }
+    },
+    "paired_for_snapshot": {
+      "type": "object", "additionalProperties": false,
+      "required": ["request_id", "version", "session", "capabilities", "window", "binding"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/id" },
+        "version": { "const": 1 },
+        "session": { "$ref": "#/$defs/session" },
+        "capabilities": { "enum": [["ping", "snapshot"], ["ping", "snapshot", "patch"]] },
+        "window": { "$ref": "#/$defs/session" },
+        "binding": { "$ref": "#/$defs/binding" }
+      }
+    },
+    "digest": { "type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]+$" },
+    "patch_base": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document_uri", "document_id", "document_version", "sha256"],
+      "properties": {
+        "document_uri": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "document_id": { "$ref": "#/$defs/session" },
+        "document_version": { "$ref": "#/$defs/id" },
+        "sha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "patch_proposal": {
+      "type": "object", "additionalProperties": false, "required": ["workspace_uri", "targets"],
+      "properties": {
+        "workspace_uri": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "targets": {
+          "type": "array", "minItems": 1, "maxItems": 3,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["base", "replacement"],
+            "properties": {
+              "base": { "$ref": "#/$defs/patch_base" },
+              "replacement": { "type": "string", "maxLength": 4096 }
+            }
+          }
+        }
+      }
+    },
+    "patch_request": {
+      "type": "object", "additionalProperties": false,
+      "required": ["operation", "request_id", "deadline_ms", "version", "session", "window", "binding", "patch"],
+      "properties": {
+        "operation": { "enum": ["preview_patch", "authorize_patch"] },
+        "request_id": { "$ref": "#/$defs/id" },
+        "deadline_ms": { "type": "integer", "minimum": 1 },
+        "version": { "const": 1 },
+        "session": { "$ref": "#/$defs/session" },
+        "window": { "$ref": "#/$defs/session" },
+        "binding": { "$ref": "#/$defs/binding" },
+        "patch": { "type": "object" }
+      },
+      "if": { "properties": { "operation": { "const": "preview_patch" } } },
+      "then": {
+        "properties": {
+          "patch": {
+            "type": "object", "additionalProperties": false, "required": ["digest", "proposal"],
+            "properties": {
+              "digest": { "$ref": "#/$defs/digest" },
+              "proposal": {
+                "type": "string", "minLength": 1, "maxLength": 4096,
+                "contentMediaType": "application/json", "contentSchema": { "$ref": "#/$defs/patch_proposal" }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "patch": {
+            "type": "object", "additionalProperties": false, "required": ["digest", "observed", "approved"],
+            "properties": {
+              "digest": { "$ref": "#/$defs/digest" },
+              "approved": { "type": "boolean" },
+              "observed": {
+                "type": "array", "minItems": 1, "maxItems": 3, "items": { "$ref": "#/$defs/patch_base" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "patch_receipt": {
+      "type": "object", "additionalProperties": false,
+      "required": ["request_id", "version", "ok", "digest"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/id" },
+        "version": { "const": 1 },
+        "ok": { "const": true },
+        "digest": { "$ref": "#/$defs/digest" },
+        "expires_ms": { "type": "integer", "minimum": 1 },
+        "operation_id": { "$ref": "#/$defs/session" }
+      },
+      "dependentRequired": { "expires_ms": ["operation_id"], "operation_id": ["expires_ms"] }
+    },
+    "patch_recovery_request": {
+      "type": "object", "additionalProperties": false,
+      "required": ["operation", "request_id", "deadline_ms", "version", "session", "window", "binding", "patch"],
+      "properties": {
+        "operation": { "const": "recover_patch" },
+        "request_id": { "$ref": "#/$defs/id" },
+        "deadline_ms": { "type": "integer", "minimum": 1 },
+        "version": { "const": 1 },
+        "session": { "$ref": "#/$defs/session" },
+        "window": { "$ref": "#/$defs/session" },
+        "binding": { "$ref": "#/$defs/binding" },
+        "patch": {
+          "type": "object", "additionalProperties": false, "required": ["action", "workspace_uri"],
+          "properties": {
+            "action": { "enum": ["latest", "result", "observe", "acknowledge"] },
+            "workspace_uri": { "type": "string", "minLength": 1, "maxLength": 1024 },
+            "operation": { "$ref": "#/$defs/session" },
+            "observed": { "type": "array", "maxItems": 3, "items": { "$ref": "#/$defs/patch_base" } }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "action": { "const": "latest" } } },
+              "then": { "not": { "required": ["operation"] } },
+              "else": { "required": ["operation"] }
+            },
+            {
+              "if": { "properties": { "action": { "enum": ["latest", "acknowledge"] } } },
+              "then": { "properties": { "observed": { "maxItems": 0 } } }
+            }
+          ]
+        }
+      }
+    },
+    "patch_recovery_receipt": {
+      "type": "object", "additionalProperties": false,
+      "required": ["request_id", "version", "ok", "report"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/id" },
+        "version": { "const": 1 },
+        "ok": { "const": true },
+        "report": {
+          "type": ["object", "null"], "additionalProperties": false,
+          "required": ["operation", "digest", "workspace_uri", "state", "targets"],
+          "properties": {
+            "operation": { "$ref": "#/$defs/session" },
+            "digest": { "$ref": "#/$defs/digest" },
+            "workspace_uri": { "type": "string", "minLength": 1, "maxLength": 1024 },
+            "state": { "enum": ["uncertain", "settled", "acknowledged"] },
+            "targets": {
+              "type": "array", "minItems": 1, "maxItems": 3,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["path", "outcome"],
+                "properties": {
+                  "path": { "type": "string", "minLength": 1, "maxLength": 1024 },
+                  "outcome": { "enum": ["applied", "unchanged", "unresolved"] }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "refused": {
+      "type": "object", "additionalProperties": false,
+      "required": ["request_id", "version", "ok", "error"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/id" },
+        "version": { "const": 1 },
+        "ok": { "const": false },
+        "error": { "enum": ["scope", "offline_policy", "conflict", "busy"] }
+      }
+    },
+    "pong": {
+      "type": "object", "additionalProperties": false,
+      "required": ["request_id", "version", "ok"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/id" },
+        "version": { "const": 1 },
+        "ok": { "const": true }
+      }
+    }
+  }
+}

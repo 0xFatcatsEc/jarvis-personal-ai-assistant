@@ -1,0 +1,32 @@
+{
+  "name": "stylus-jarvis",
+  "displayName": "STYLUS JARVIS",
+  "description": "Pair this local VS Code window with the STYLUS JARVIS desktop.",
+  "version": "0.1.0",
+  "publisher": "stylus-jarvis",
+  "engines": { "vscode": "^1.95.0" },
+  "extensionKind": ["ui"],
+  "main": "./dist/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": { "supported": false },
+    "virtualWorkspaces": { "supported": false }
+  },
+  "contributes": {
+    "commands": [
+      { "command": "stylusJarvis.pair", "title": "STYLUS JARVIS: Pair" },
+      { "command": "stylusJarvis.disconnect", "title": "STYLUS JARVIS: Disconnect" },
+      { "command": "stylusJarvis.shareContext", "title": "STYLUS JARVIS: Share Editor Context" },
+      { "command": "stylusJarvis.previewPatch", "title": "STYLUS JARVIS: Review Patch from Clipboard" },
+      { "command": "stylusJarvis.choosePatchDiff", "title": "STYLUS JARVIS: Open Patch Diff" },
+      { "command": "stylusJarvis.approvePatch", "title": "STYLUS JARVIS: Approve and Apply Patch" },
+      { "command": "stylusJarvis.reconcilePatch", "title": "STYLUS JARVIS: View and Reconcile Patch Outcome" },
+      { "command": "stylusJarvis.acknowledgePatch", "title": "STYLUS JARVIS: Acknowledge Unresolved Patch Outcome" }
+    ]
+  },
+  "scripts": { "build": "tsc -p tsconfig.json", "vscode:prepublish": "npm run build" },
+  "devDependencies": {
+    "@types/node": "22.18.6",
+    "@types/vscode": "1.95.0",
+    "typescript": "5.9.3"
+  }
+}

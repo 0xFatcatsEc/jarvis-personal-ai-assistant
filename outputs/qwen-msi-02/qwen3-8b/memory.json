@@ -1,0 +1,237 @@
+[
+  {
+    "monotonic_s": 230517.14,
+    "ram_mib": 5625,
+    "vram_mib": 102
+  },
+  {
+    "monotonic_s": 230517.75,
+    "ram_mib": 5650,
+    "vram_mib": 102
+  },
+  {
+    "monotonic_s": 230518.343,
+    "ram_mib": 5897,
+    "vram_mib": 164
+  },
+  {
+    "monotonic_s": 230518.937,
+    "ram_mib": 5971,
+    "vram_mib": 164
+  },
+  {
+    "monotonic_s": 230519.515,
+    "ram_mib": 5991,
+    "vram_mib": 164
+  },
+  {
+    "monotonic_s": 230520.125,
+    "ram_mib": 6618,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230523.234,
+    "ram_mib": 7345,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230525.375,
+    "ram_mib": 7320,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230526.015,
+    "ram_mib": 7253,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230526.859,
+    "ram_mib": 7232,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230527.453,
+    "ram_mib": 7188,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230528.062,
+    "ram_mib": 7164,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230528.656,
+    "ram_mib": 7115,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230529.265,
+    "ram_mib": 7080,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230529.859,
+    "ram_mib": 6998,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230530.484,
+    "ram_mib": 6891,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230531.093,
+    "ram_mib": 6870,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230531.687,
+    "ram_mib": 6858,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230532.281,
+    "ram_mib": 6881,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230532.875,
+    "ram_mib": 6884,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230533.484,
+    "ram_mib": 6880,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230534.062,
+    "ram_mib": 6867,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230534.656,
+    "ram_mib": 6846,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230535.234,
+    "ram_mib": 6834,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230535.828,
+    "ram_mib": 6825,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230536.453,
+    "ram_mib": 6831,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230537.062,
+    "ram_mib": 6843,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230537.671,
+    "ram_mib": 6701,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230538.25,
+    "ram_mib": 6702,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230538.843,
+    "ram_mib": 6727,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230539.421,
+    "ram_mib": 6753,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230540.015,
+    "ram_mib": 6765,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230540.593,
+    "ram_mib": 6792,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230541.203,
+    "ram_mib": 6793,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230541.796,
+    "ram_mib": 6802,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230542.406,
+    "ram_mib": 6845,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230543.015,
+    "ram_mib": 6996,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230543.625,
+    "ram_mib": 6963,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230544.218,
+    "ram_mib": 6919,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230544.828,
+    "ram_mib": 6923,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230545.421,
+    "ram_mib": 6902,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230546.031,
+    "ram_mib": 6901,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230546.625,
+    "ram_mib": 6865,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230547.218,
+    "ram_mib": 6870,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230547.796,
+    "ram_mib": 6858,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230548.39,
+    "ram_mib": 6872,
+    "vram_mib": 2004
+  },
+  {
+    "monotonic_s": 230549.015,
+    "ram_mib": 6768,
+    "vram_mib": 43
+  }
+]

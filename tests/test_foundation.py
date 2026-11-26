@@ -1,11 +1,14 @@
 import asyncio
+import hashlib
 import json
 import os
 import sqlite3
 import tempfile
 import unittest
 from collections.abc import AsyncIterator
+from importlib.resources import files
 from pathlib import Path
+from unittest.mock import patch
 from uuid import uuid4
 
 import httpx
@@ -89,6 +92,33 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
         self.log.close()
         self.assertNotIn("private marker", (self.root/"logs"/"runtime.jsonl").read_text())
 
+    async def test_completed_submission_replays_without_model_or_budget(self) -> None:
+        request = uuid4()
+        expected = await self.core.submit(self.scope, request, "original")
+        with (patch.object(self.router, "probe", side_effect=Failure(Code.MODEL)) as probe,
+              patch.object(self.router, "history_budget", side_effect=Failure(Code.INPUT)) as budget):
+            self.assertEqual(await self.core.submit(self.scope, request, "original"), expected)
+            with self.assertRaises(Failure) as conflict:
+                await self.core.submit(self.scope, request, "changed")
+            self.assertEqual(conflict.exception.code, Code.CONFLICT)
+            probe.assert_not_awaited()
+            budget.assert_not_called()
+        self.assertEqual(len(self.model.calls), 1)
+        self.assertEqual(len(await self.store.history(self.scope)), 2)
+
+    async def test_failed_final_save_recovers_on_reopen(self) -> None:
+        request = uuid4()
+        with patch.object(self.store, "finish", side_effect=Failure(Code.BUSY)), self.assertRaises(Failure):
+            await self.core.submit(self.scope, request, "question")
+        self.assertIsNotNone(self.core.pending)
+        await self.db.close()
+        self.db = Database(self.db.path)
+        await self.db.open()
+        self.store = Repositories(self.db)
+        self.assertEqual(await self.store.history(self.scope), [
+            (1, "user", "question", "completed"), (2, "assistant", "Answer", "completed"),
+        ])
+
     async def test_switch_cancels_stream(self) -> None:
         self.model.hold = True
         running = asyncio.create_task(self.core.submit(self.scope, uuid4(), "private"))
@@ -126,12 +156,40 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
     async def test_newer_schema_fails_closed(self) -> None:
         await self.db.close()
         with sqlite3.connect(self.db.path) as conn:
-            conn.execute("INSERT INTO migrations VALUES(2,'new-release')")
+            conn.execute("INSERT INTO migrations SELECT MAX(version)+1,'new-release' FROM migrations")
         conn.close()
         self.db = Database(self.db.path)
         with self.assertRaises(Failure) as caught:
             await self.db.open()
         self.assertEqual(caught.exception.code, Code.SCHEMA)
+
+    async def test_grant_migration_preserves_v1_turns(self) -> None:
+        path = self.root / "legacy.sqlite3"
+        initial = files("stylus_jarvis.storage").joinpath("migrations/0001_initial.sql").read_bytes()
+        with sqlite3.connect(path) as connection:
+            connection.executescript(initial.decode("utf-8"))
+            connection.execute("INSERT INTO migrations VALUES(1,?)", (hashlib.sha256(initial).hexdigest(),))
+            connection.execute("INSERT INTO projects(id,owner,root,identity) VALUES('p','owner',?,?)",
+                               (str(self.root), str(self.root)))
+            connection.execute("INSERT INTO conversations(id,project,title) VALUES('c','p','old thread')")
+            connection.execute("INSERT INTO turns(id,conversation,submission,digest,state) "
+                               "VALUES('t','c','r','d','active')")
+            connection.executemany("INSERT INTO messages VALUES(?,?,?,?,?,?)", [
+                ("u", "c", "t", 1, "user", "old question"), ("a", "c", "t", 2, "assistant", "checkpoint"),
+            ])
+        connection.close()
+        upgraded = Database(path)
+        await upgraded.open()
+        try:
+            store = Repositories(upgraded)
+            scope = await store.select("owner", "p", 1, "c")
+            self.assertEqual((await store.history(scope))[-1][2:], ("checkpoint", "interrupted"))
+            receipt = await store.finish(scope, "t", State.COMPLETED, "overwrite", None)
+            self.assertEqual((receipt.state, receipt.answer), (State.INTERRUPTED, "checkpoint"))
+            self.assertIsNone(await upgraded.call(lambda c: c.execute(
+                "SELECT grant_revision FROM turns WHERE id='t'").fetchone()[0]))
+        finally:
+            await upgraded.close()
 
     async def test_settings_validation_and_round_trip(self) -> None:
         with self.assertRaises(ValidationError):
@@ -153,10 +211,17 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
         body = b'{"message":{"content":"hello","thinking":"secret"},"done":false}\n{"message":{"content":""},"done":true}'
         def reply(req: httpx.Request) -> httpx.Response:
             self.assertEqual(req.url.host, "127.0.0.1")
+            if req.url.path == "/api/status":
+                return httpx.Response(200, json={"cloud": {"disabled": True}})
             if req.url.path == "/api/tags":
                 return httpx.Response(200, json={"models":[{"name":self.manifest.model,"digest":digest}]})
+            request = json.loads(req.content)
+            self.assertIs(request["think"], True)
+            self.assertEqual(request["options"]["temperature"], 0)
+            self.assertEqual(request["options"]["num_predict"], self.settings.output)
             return httpx.Response(200, content=body)
         adapter = Ollama(self.settings, self.manifest, transport=httpx.MockTransport(reply))
+        self.enterContext(patch("stylus_jarvis.inference.ollama.verify_listener"))
         try:
             await adapter.probe()
             self.assertEqual([p async for p in adapter.generate([])], ["hello"])
@@ -164,13 +229,32 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(Failure) as caught:
                 await adapter.probe()
             self.assertEqual(caught.exception.code, Code.DIGEST)
+            digest = self.manifest.digest
             body = b'{"done":false,"message":{"content":"unfinished"}}\n'
             with self.assertRaises(Failure):
                 _ = [p async for p in adapter.generate([])]
         finally:
             await adapter.close()
 
+    async def test_ollama_drains_http_body_after_terminal_frame(self) -> None:
+        drained = asyncio.Event()
+
+        class Body(httpx.AsyncByteStream):
+            async def __aiter__(self) -> AsyncIterator[bytes]:
+                yield b'{"done":false,"message":{"content":"","thinking":"private"}}\n'
+                yield b'{"done":true,"done_reason":"stop","message":{"content":"OK"}}\n'
+                await asyncio.sleep(0)
+                drained.set()
+
+        adapter = Ollama(self.settings, self.manifest,
+                         transport=httpx.MockTransport(lambda _: httpx.Response(200, stream=Body())))
+        self.addAsyncCleanup(adapter.close)
+        with patch.object(adapter, "probe", autospec=True):
+            self.assertEqual([part async for part in adapter.generate([])], ["OK"])
+        self.assertTrue(drained.is_set())
+
     async def test_redirect_does_not_leave_loopback(self) -> None:
+        self.enterContext(patch("stylus_jarvis.inference.ollama.verify_listener"))
         requests: list[str] = []
         def redirect(req: httpx.Request) -> httpx.Response:
             requests.append(str(req.url))

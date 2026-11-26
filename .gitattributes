@@ -1,0 +1,2 @@
+src/stylus_jarvis/storage/migrations/*.sql text eol=lf
+docs/evidence/1.3.2.1/bundle.json -text

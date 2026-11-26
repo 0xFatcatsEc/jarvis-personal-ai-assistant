@@ -1,0 +1,32 @@
+{
+  "format": 1,
+  "fixture": "phase2-recovery-v1",
+  "target": "Thin A15 B7UC",
+  "recorded_at_utc": "2026-11-24T14:30:42.987900+00:00",
+  "windows": "10.0.26300",
+  "python": "3.12.13",
+  "sqlite": "3.50.4",
+  "previous_commit": "aa1c7fb",
+  "schema_path": [
+    6,
+    7,
+    6
+  ],
+  "previous_wheel_sha256": "1349ee575772dbcb6e01c6cb9eb499e554e41e103ba7d7f5998d00d5d890f906",
+  "candidate_wheel_sha256": "feb8759c9ce4e2fbfb61e1c413e6270515748c618a713ae3f23185571e0a9d87",
+  "pre_upgrade_snapshot_sha256": "c3c69d1be3868847b080dda6207474521a20f76a68e28e92dc74495ce7247411",
+  "restore": {
+    "schema": 7,
+    "restore_seconds": 0.184,
+    "simulated_recovery_point_age_seconds": 86340.0,
+    "conversation_fact_and_citation_reopened": true,
+    "missing_original_reported": true,
+    "missing_coverage_quarantined": true,
+    "later_deletions_replayed": 1
+  },
+  "rollback": {
+    "schema": 6,
+    "conversation_fact_and_citation_reopened": true,
+    "seconds": 0.886
+  }
+}

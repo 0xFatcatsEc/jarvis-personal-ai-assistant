@@ -1,0 +1,42 @@
+{
+  "build": "0.1.0",
+  "python": "3.12.13",
+  "sqlite": "3.50.4",
+  "schema": 2,
+  "migrations": {
+    "0001_initial.sql": "8b893e1261ee325f3cb33dd75b30811810a36ec049ffc9bb66d1b5e7feee237e",
+    "0002_turn_grant.sql": "270d48d6671c28dcca5ae43c5b64135c4c7d1ef15317379bb2e9f50ca285942a"
+  },
+  "ollama": "0.40.17",
+  "ollama_exe_sha256": "929941de0cd0ef8fb95f9f2c7fe8f9645897942a6492539915a5383066b47207",
+  "model": "qwen3:4b",
+  "model_digest": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+  "files": {
+    "assets.zip": "d4af12c0ed403d6d948281e0cc51e9cee28524c783fbeeb800977daf9cfecf84",
+    "install-release.ps1": "a1f5b4a0dbbbe403118ce2d8d3c9233473b907fa6875131363ac7eac8e65998a",
+    "launch-release.ps1": "72caa8c322a1a45b9e47e81db6287d221facde81bbb6aa5702d42b0c152ba17d",
+    "m0-assets.json": "64e7f5863063e5ff21ad244449f4465c49f23dc81f25bb905243abae9501bdde",
+    "runtime.zip": "d58a62ccf1d799503746d2cc5a5ccd1ddd0b41a25ee2f091f4a3266632df924d",
+    "uv.lock": "274d7883a84ce373554ce93bce40aeead309307d690036339d123845990472e8",
+    "wheels/.gitignore": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1",
+    "wheels/annotated_types-0.8.0-py3-none-any.whl": "f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0",
+    "wheels/anyio-4.16.0-py3-none-any.whl": "c66ae634e0b8228396b801741beb3294326d4b6102f7bba4041c0dfb58c29026",
+    "wheels/certifi-2026.11.20-py3-none-any.whl": "7422df25243767b9877031a2248cb14d09ddac9beee846f4cef3d5c9191d488f",
+    "wheels/h11-0.16.0-py3-none-any.whl": "63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86",
+    "wheels/httpcore-1.0.9-py3-none-any.whl": "2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55",
+    "wheels/httpx-0.28.1-py3-none-any.whl": "d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad",
+    "wheels/idna-3.20-py3-none-any.whl": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c",
+    "wheels/pydantic-2.14.4-py3-none-any.whl": "653a2ad9f6d8858529c77c72717d0ea991d6c6837fe683246b2f4b2bbfc3fadc",
+    "wheels/pydantic_core-2.50.5-cp312-cp312-win_amd64.whl": "baa107902f8e38011a5f79836d905eb6bfaac1d4b0bd09fc86509b711d0b09c8",
+    "wheels/pyside6-6.12.0-cp310-abi3-win_amd64.whl": "31a8d2893f2f28ab483b1534dde0438f27af6e234593de30425cb4729052d8f8",
+    "wheels/pyside6_addons-6.12.0-cp310-abi3-win_amd64.whl": "98d8d62010da6605344cee83e5c96fb846170a1f2d924523f10f5d92078b02b0",
+    "wheels/pyside6_essentials-6.12.0-cp310-abi3-win_amd64.whl": "c9a95102aa23c1f86516a30d5a9be37552d324eee7e567eb7508973f1218cb42",
+    "wheels/pyside6_pdf-6.12.0.140-cp310-abi3-win_amd64.whl": "4971ba1a0ca15e7c29cfd808e9600aeb46b2305dad01456eb09fa3197166268e",
+    "wheels/pyside6_webengine-6.12.0.140-cp310-abi3-win_amd64.whl": "f9b61b1d457a591ee590a6b80515f25a3e61e2576a2a0a70566380f9d9de4ab0",
+    "wheels/qasync-0.28.0-py3-none-any.whl": "21faba8d047c717008378f5ac29ea58c32a8128528629e4afd57c59b768dba0f",
+    "wheels/shiboken6-6.12.0-cp310-abi3-win_amd64.whl": "a1906cb8116869178c64b6bab52623bbc8b4ceed7b30bfc3c9aa0f6e67f6438e",
+    "wheels/stylus_jarvis-0.1.0-py3-none-any.whl": "01ef8023778963f18b759ce08bf9391f8e2f04c72112630f183bd82b96c09d2a",
+    "wheels/typing_extensions-4.16.0-py3-none-any.whl": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8",
+    "wheels/typing_inspection-0.4.5-py3-none-any.whl": "bc210535442b39e1bf2805e0c7a17dfd6a4ace760c84c7f7d16245d23a6b1c39"
+  }
+}
