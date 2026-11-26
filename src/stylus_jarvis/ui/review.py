@@ -7,7 +7,8 @@ from ..memory.service import Destination, Origin
 
 
 class FactEditor(QDialog):
-    def __init__(self, parent: QWidget, project: str, owner: str, text: str, origin: Origin) -> None:
+    def __init__(self, parent: QWidget, project: str, owner: str, text: str, origin: Origin,
+                 *, source_text: str = "") -> None:
         super().__init__(parent)
         self.setWindowTitle("Review memory")
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
@@ -16,7 +17,18 @@ class FactEditor(QDialog):
         self.destination.addItem(f"Project · {project}", Destination.PROJECT.value)
         self.destination.addItem(f"Personal · {owner}", Destination.PERSONAL.value)
         layout.addRow("Save to", self.destination)
+        if source_text:
+            self.setWindowTitle("Review fact from evidence")
+            self.destination.removeItem(1)
+            # Keep the destination visible while enforcing the cited project's boundary.
+            self.destination.setEnabled(False)
+            excerpt = QPlainTextEdit()
+            excerpt.setAccessibleName("Source citation and retained excerpt")
+            excerpt.setReadOnly(True)
+            excerpt.setPlainText(source_text)
+            layout.addRow("Evidence", excerpt)
         self.statement = QPlainTextEdit()
+        self.statement.setAccessibleName("Fact statement")
         self.statement.setPlainText(text)
         layout.addRow("Proposed fact" if origin == Origin.INFERRED else "Fact", self.statement)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
@@ -32,3 +44,6 @@ class FactEditor(QDialog):
             self.save.setEnabled(bool(value.strip()) and len(value) <= 8192 and "\x00" not in value)
         self.statement.textChanged.connect(validate)
         validate()
+        if source_text:
+            self.resize(600, 400)
+            self.statement.setFocus()

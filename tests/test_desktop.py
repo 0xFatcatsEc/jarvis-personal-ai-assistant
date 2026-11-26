@@ -9,6 +9,7 @@ import tempfile
 import time
 import unittest
 from collections.abc import AsyncGenerator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from pathlib import Path
 from threading import Event
 from typing import Any
@@ -21,6 +22,7 @@ from PySide6.QtGui import QTextCursor
 from PySide6.QtMultimedia import QAudioFormat
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialog, QInputDialog, QLineEdit, QListView, QPlainTextEdit
+from pypdf import PdfWriter
 from qasync import QEventLoop
 
 from stylus_jarvis.bootstrap import run_app
@@ -43,6 +45,160 @@ from stylus_jarvis.voice.piper import ReplySpeech
 
 @unittest.skipUnless(os.name == "nt", "Windows desktop identity")
 class DesktopTest(unittest.TestCase):
+    def test_remember_from_evidence_lifecycle(self) -> None:
+        self.run_scenario(self.remember_from_evidence_scenario)
+
+    async def remember_from_evidence_scenario(self, root: Path) -> None:
+        atlas, birch = root / "Atlas", root / "Birch"
+        atlas.mkdir()
+        birch.mkdir()
+        source = atlas / "decisions.txt"
+        source.write_text("Study group chooses SQLite.", encoding="utf-8")
+        database = Database(root / "data/jarvis.sqlite3")
+        await database.open()
+        store = Repositories(database)
+        owner = user_identity()
+        try:
+            first = await store.select(owner, await store.register(owner, atlas), 1)
+            second = await store.select(owner, await store.register(owner, birch), 1)
+            await store.confirm_fact(second, FactDraft(second, "Birch-only fact"), confirmed=True)
+            await store.confirm_fact(first, FactDraft(first, "Personal-only fact", Destination.PERSONAL),
+                                     confirmed=True)
+        finally:
+            await database.close()
+
+        async def wait_for(predicate: Callable[[], bool]) -> None:
+            async with asyncio.timeout(5):
+                while not predicate():
+                    await asyncio.sleep(.02)
+
+        @asynccontextmanager
+        async def desktop() -> AsyncGenerator[MainWindow, None]:
+            stop = asyncio.Event()
+            window = MainWindow()
+            window.show()
+            with patch.object(Ollama, "probe", side_effect=Failure(Code.MODEL)):
+                app = asyncio.create_task(run_app(window, root, stop))
+                try:
+                    await wait_for(window.approve_source.isEnabled)
+                    window.projects.setCurrentIndex(window.projects.findData(first.project))
+                    await wait_for(window.approve_source.isEnabled)
+                    yield window
+                finally:
+                    stop.set()
+                    self.assertEqual(await asyncio.wait_for(app, 8), 0)
+                    window.hide()
+                    window.deleteLater()
+                    await asyncio.sleep(.02)
+
+        async def index(window: MainWindow) -> None:
+            with patch("stylus_jarvis.bootstrap.QFileDialog.getOpenFileName", return_value=(str(source), "")):
+                window.status.clear()
+                window.extract_source.click()
+                await wait_for(lambda: "Saved locators: 1" in window.status.text())
+
+        async def export_facts(window: MainWindow, name: str) -> list[dict[str, Any]]:
+            export = root / name
+            with patch("stylus_jarvis.bootstrap.QFileDialog.getSaveFileName", return_value=(str(export), "")):
+                window.status.clear()
+                window.export_project.click()
+                await wait_for(lambda: "Project exported" in window.status.text())
+            return json.loads(export.read_bytes())["facts"]
+
+        async def review(window: MainWindow, title: str, action: Callable[[], None]) -> FactEditor:
+            action()
+            await wait_for(lambda: any(dialog.isVisible() and title in dialog.windowTitle()
+                                       for dialog in window.findChildren(FactEditor)))
+            return next(dialog for dialog in window.findChildren(FactEditor)
+                        if dialog.isVisible() and title in dialog.windowTitle())
+
+        async with desktop() as window:
+            window.navigate("Evidence")
+            await index(window)
+            evidence = window.evidence
+            self.assertFalse(evidence.remember.isEnabled())
+            evidence.query.setText("SQLite")
+            evidence.search.click()
+            await wait_for(evidence.remember.isEnabled)
+            citation = evidence.matches.currentItem().data(Qt.ItemDataRole.UserRole)
+
+            def remember() -> None:
+                evidence.remember.setFocus()
+                QTest.keyClick(evidence.remember, Qt.Key.Key_Space)
+
+            editor = await review(window, "Review fact from evidence", remember)
+            self.assertFalse(editor.save.isEnabled())
+            self.assertFalse(editor.destination.isEnabled())
+            self.assertEqual(editor.destination.currentData(), Destination.PROJECT.value)
+            excerpt = next(widget for widget in editor.findChildren(QPlainTextEdit) if widget.isReadOnly())
+            self.assertIn("Study group chooses SQLite.", excerpt.toPlainText())
+            self.assertIn(citation.revision, excerpt.toPlainText())
+            self.assertIn(citation.locator, excerpt.toPlainText())
+            editor.statement.setPlainText("Cancelled fact")
+            QTest.keyClick(editor, Qt.Key.Key_Escape)
+            window.navigate("Memory")
+            await wait_for(lambda: "No confirmed facts" in window.memory.feedback.text())
+            window.navigate("Evidence")
+            editor = await review(window, "Review fact from evidence", remember)
+            editor.statement.setPlainText("Use SQLite for the study log.")
+            editor.save.click()
+            await wait_for(lambda: "saved to project memory" in window.status.text())
+
+        source.write_text("Study group chooses PostgreSQL.", encoding="utf-8")
+        async with desktop() as window:
+            await index(window)
+            window.navigate("Memory")
+            await wait_for(window.memory.provenance.isEnabled)
+            fact = window.memory.selected()
+            self.assertEqual(fact.text, "Use SQLite for the study log.")
+            self.assertEqual((fact.source, fact.revision, fact.locator),
+                             (citation.source, citation.revision, citation.locator))
+            window.memory.provenance.click()
+            await wait_for(lambda: any(d.isVisible() and d.windowTitle() == "Fact source citation"
+                                       for d in window.findChildren(QDialog)))
+            dialog = next(d for d in window.findChildren(QDialog)
+                          if d.isVisible() and d.windowTitle() == "Fact source citation")
+            self.assertIn("Study group chooses SQLite.", dialog.findChild(QPlainTextEdit).toPlainText())
+            dialog.reject()
+            exported, = await export_facts(window, "before-forget.json")
+            self.assertEqual(exported["id"], fact.id)
+            self.assertEqual(exported["evidence"]["revision_id"], citation.revision)
+            self.assertEqual(exported["evidence"]["locator_id"], citation.locator)
+            editor = await review(window, "Correct version 1", window.correct_fact.click)
+            editor.statement.setPlainText("Keep the study log in PostgreSQL.")
+            editor.save.click()
+            await wait_for(lambda: "Version 2" in window.memory.detail.toPlainText())
+            self.assertEqual(window.memory.selected().id, fact.id)
+            editor = await review(window, "Forget fact", window.forget_fact.click)
+            editor.save.click()
+            await wait_for(lambda: "No confirmed facts" in window.memory.feedback.text())
+            await index(window)
+
+        async with desktop() as window:
+            window.navigate("Memory")
+            await wait_for(lambda: "No confirmed facts" in window.memory.feedback.text())
+            self.assertEqual(await export_facts(window, "after-forget.json"), [])
+            window.navigate("Evidence")
+            evidence = window.evidence
+            evidence.query.setText("SQLite")
+            evidence.revision.setText(citation.revision)
+            evidence.search.click()
+            await wait_for(evidence.remember.isEnabled)
+            evidence.inspect.click()
+            await wait_for(lambda: citation.locator in evidence.detail.toPlainText())
+            self.assertIn("Study group chooses SQLite.", evidence.detail.toPlainText())
+            editor = await review(window, "Review fact from evidence", evidence.remember.click)
+            editor.statement.setPlainText("Revoked fact")
+            with sqlite3.connect(database.path) as conn:
+                conn.execute("UPDATE projects SET grant=grant+1 WHERE id=?", (first.project,))
+            conn.close()
+            editor.save.click()
+            await wait_for(lambda: window.status.text() == str(Failure(Code.SCOPE)))
+            with sqlite3.connect(database.path) as conn:
+                self.assertEqual(conn.execute("SELECT count(*) FROM facts WHERE project=?",
+                                              (first.project,)).fetchone()[0], 0)
+            conn.close()
+
     def test_memory_browse_scope_and_retained_citation(self) -> None:
         self.run_scenario(self.memory_browser_scenario)
 
@@ -115,6 +271,93 @@ class DesktopTest(unittest.TestCase):
 
     def test_evidence_search_exact_locators_and_scope_changes(self) -> None:
         self.run_scenario(self.evidence_scenario)
+
+    def test_grounded_answers_on_all_frozen_questions(self) -> None:
+        self.run_scenario(self.grounded_answers_scenario)
+
+    async def grounded_answers_scenario(self, root: Path) -> None:
+        fixtures = Path(__file__).parent / "fixtures/m0-v1"
+        cases = json.loads((fixtures / "cases.json").read_bytes())["cases"]
+        database = Database(root / "data/jarvis.sqlite3")
+        await database.open()
+        store = Repositories(database)
+        owner = user_identity()
+        projects, revisions = {}, {}
+        try:
+            for name in ("atlas", "birch"):
+                folder = root / name
+                folder.mkdir()
+                path = folder / "handbook.pdf"
+                shutil.copyfile(fixtures / name / path.name, path)
+                projects[name] = await store.register(owner, folder)
+                scope = await store.select(owner, projects[name], 1)
+                saved = await store.approve_source(scope, path)
+                ids = saved.source_id, saved.revision_id
+                await store.extract_locators(scope, *ids)
+                await store.publish_revision(scope, *ids)
+                revisions[name] = ids
+        finally:
+            await database.close()
+
+        scanned = root / "birch" / "scanned.pdf"
+        writer = PdfWriter()
+        writer.add_blank_page(width=72, height=72)
+        writer.write(scanned)
+        window = MainWindow()
+        window.show()
+        evidence = window.evidence
+        stop = asyncio.Event()
+        with patch.object(Ollama, "probe", side_effect=Failure(Code.MODEL)):
+            app = asyncio.create_task(run_app(window, root, stop))
+            try:
+                async with asyncio.timeout(25):
+                    while not window.approve_source.isEnabled():
+                        await asyncio.sleep(.02)
+                    window.navigate("Evidence")
+                    for case in cases:
+                        with self.subTest(case=case["id"]):
+                            name = case["project"]
+                            window.projects.setCurrentIndex(window.projects.findData(projects[name]))
+                            while not window.approve_source.isEnabled():
+                                await asyncio.sleep(.02)
+                            evidence.query.setText(case["question"])
+                            evidence.answer.setFocus()
+                            QTest.keyClick(evidence.answer, Qt.Key.Key_Space)
+                            while ("Searching" in evidence.feedback.text()
+                                   or not (evidence.matches.count() or
+                                           "Insufficient evidence" in evidence.feedback.text())):
+                                await asyncio.sleep(.02)
+                            rendered = evidence.answer_text.toPlainText()
+                            if case["expected"] == "abstain":
+                                self.assertEqual(rendered, "")
+                                self.assertEqual(evidence.matches.count(), 0)
+                                continue
+                            self.assertIn(case["answer"].casefold(), " ".join(rendered.split()).casefold())
+                            self.assertIn(revisions[name][1], rendered)
+                            citations = [evidence.matches.item(i).data(Qt.ItemDataRole.UserRole)
+                                         for i in range(evidence.matches.count())]
+                            self.assertTrue(citations)
+                            for citation in citations:
+                                self.assertEqual((citation.source, citation.revision), revisions[name])
+                            first = citations[0]
+                            self.assertEqual(first.relative_path, case["citation"]["file"])
+                            self.assertEqual(first.page, case["citation"]["page"])
+                            if case["id"] == "Q01":
+                                evidence.matches.setFocus()
+                                QTest.keyClick(evidence.matches, Qt.Key.Key_Return)
+                                while first.locator not in evidence.detail.toPlainText():
+                                    await asyncio.sleep(.02)
+                                self.assertIn(first.revision, evidence.detail.toPlainText())
+                    with patch("stylus_jarvis.bootstrap.QFileDialog.getOpenFileName",
+                               return_value=(str(scanned), "")):
+                        window.extract_source.click()
+                        while "Pages needing OCR: 1" not in window.status.text():
+                            await asyncio.sleep(.02)
+            finally:
+                stop.set()
+                self.assertEqual(await asyncio.wait_for(app, 8), 0)
+                window.hide()
+                window.deleteLater()
 
     async def evidence_scenario(self, root: Path) -> None:
         db = Database(root / "data/jarvis.sqlite3")
@@ -193,7 +436,7 @@ class DesktopTest(unittest.TestCase):
 
                     evidence.revision.clear()
                     evidence.query.setText("current marker")
-                    evidence.search.click()
+                    evidence.answer.click()
                     await received.wait()
                     foreign = window.projects.findData(birch.project)
                     self.assertGreaterEqual(foreign, 0)
@@ -204,6 +447,7 @@ class DesktopTest(unittest.TestCase):
                     await returned.wait()
                     await wait_for(window.approve_source.isEnabled)
                     self.assertEqual(evidence.matches.count(), 0)
+                    self.assertEqual(evidence.answer_text.toPlainText(), "")
                     evidence.query.setText("archival marker")
                     evidence.revision.setText(old[1])
                     evidence.search.click()
@@ -214,8 +458,10 @@ class DesktopTest(unittest.TestCase):
                     await wait_for(window.approve_source.isEnabled)
                     evidence.query.setText("archival marker")
                     evidence.revision.setText(old[1])
-                    evidence.search.click()
+                    evidence.answer.click()
                     await wait_for(lambda: evidence.matches.count() > 0)
+                    self.assertIn("Text range [0, 15)", evidence.answer_text.toPlainText())
+                    self.assertIn(old[1], evidence.answer_text.toPlainText())
                     with sqlite3.connect(db.path) as conn:
                         conn.execute("UPDATE projects SET grant=grant+1 WHERE id=?", (atlas.project,))
                     conn.close()
@@ -223,6 +469,7 @@ class DesktopTest(unittest.TestCase):
                     await wait_for(lambda: "unavailable" in evidence.feedback.text())
                     self.assertEqual(evidence.matches.count(), 0)
                     self.assertEqual(evidence.detail.toPlainText(), "")
+                    self.assertEqual(evidence.answer_text.toPlainText(), "")
             finally:
                 release.set()
                 stop.set()
@@ -322,11 +569,12 @@ class DesktopTest(unittest.TestCase):
                     self.assertIn("Saved code: example.py", window.history.toPlainText())
                     self.assertIn(original.revision_id, window.history.toPlainText())
                     self.assertEqual(window.code_label.text(), "")
-                    self.assertEqual(len(received), 1)
-                    self.assertIn("old_revision_only", received[0].content)
-                    self.assertIn(original.revision_id, received[0].content)
-                    self.assertNotIn("replacement_only", received[0].content)
-                    self.assertNotIn(replacement.revision_id, received[0].content)
+                    self.assertEqual([message.role for message in received], ["system", "user"])
+                    self.assertIn("untrusted data", received[0].content)
+                    self.assertIn("old_revision_only", received[1].content)
+                    self.assertNotIn(original.revision_id, received[1].content)
+                    self.assertNotIn("replacement_only", received[1].content)
+                    self.assertNotIn(replacement.revision_id, received[1].content)
                     self.assertEqual(hashlib.sha256(file.read_bytes()).hexdigest(), before)
             finally:
                 stop.set()

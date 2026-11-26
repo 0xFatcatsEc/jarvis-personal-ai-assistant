@@ -23,6 +23,8 @@ from .editor.bridge import EditorBridge
 from .inference.ollama import Ollama
 from .inference.router import Router
 from .knowledge.context import Citation
+from .knowledge.answers import extract_answer
+from .knowledge.locators import Locator
 from .runtime.coordinator import Coordinator
 from .runtime.diagnostics import Diagnostics, Event
 from .runtime.index_queue import IndexQueue
@@ -122,9 +124,11 @@ class Desktop:
         evidence.revision.textChanged.connect(self.clear_evidence)
         evidence.matches.currentItemChanged.connect(self.clear_evidence_detail)
         evidence.search.clicked.connect(lambda: self.spawn(self.search_evidence))
+        evidence.answer.clicked.connect(lambda: self.spawn(lambda: self.search_evidence(answer=True)))
         evidence.query.returnPressed.connect(evidence.search.click)
         evidence.revision.returnPressed.connect(evidence.search.click)
         evidence.inspect.clicked.connect(lambda: self.spawn(self.inspect_evidence))
+        evidence.remember.clicked.connect(lambda: self.spawn(lambda: self.inspect_evidence(remember=True)))
         evidence.matches.itemActivated.connect(lambda _: evidence.inspect.click())
         self.view.projects.currentIndexChanged.connect(lambda: self.change(True))
         self.view.threads.currentIndexChanged.connect(lambda: self.change(False))
@@ -471,7 +475,7 @@ class Desktop:
     def evidence_is_current(self, scope: Scope, version: int) -> bool:
         return not self.closing and self.core.selection == scope and self.evidence_version == version
 
-    async def search_evidence(self) -> None:
+    async def search_evidence(self, *, answer: bool = False) -> None:
         scope = self.core.selection
         if scope is None:
             return
@@ -498,14 +502,14 @@ class Desktop:
             self.log.emit(Event.ERROR, code=exc.code, run=exc.reference)
             return
         if self.evidence_is_current(scope, version):
-            evidence.show_results(bundle)
+            evidence.show_results(extract_answer(query, bundle) if answer else bundle, answer=answer)
 
-    async def inspect_evidence(self) -> None:
+    async def inspect_evidence(self, *, remember: bool = False) -> None:
         scope = self.core.selection
         evidence = self.view.evidence
         item = evidence.matches.currentItem()
         citation = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
-        if scope is None or not isinstance(citation, Citation):
+        if scope is None or not isinstance(citation, Citation) or (remember and self.memory_dialog is not None):
             return
         self.clear_evidence_detail()
         version = self.evidence_version
@@ -518,6 +522,10 @@ class Desktop:
             self.log.emit(Event.ERROR, code=exc.code, run=exc.reference)
             return
         if self.evidence_is_current(scope, version):
+            if remember:
+                if evidence.isVisible():
+                    self.review_fact(evidence=(citation, locator))
+                return
             evidence.show_locator(citation, locator)
             evidence.feedback.setText("Showing the retained excerpt for this exact citation.")
             if item is not None and evidence.matches.hasFocus():
@@ -655,12 +663,19 @@ class Desktop:
         editor.accepted.connect(lambda: self.spawn(persist))
         self.open_memory_dialog(editor)
 
-    def review_fact(self, text: str = "", origin: Origin = Origin.USER, *, previous: Fact | None = None) -> None:
+    def review_fact(self, text: str = "", origin: Origin = Origin.USER, *, previous: Fact | None = None,
+                    evidence: tuple[Citation, Locator] | None = None) -> None:
         scope = self.core.selection
         if scope is None or self.closing or self.memory_dialog is not None:
             return
-        editor = FactEditor(self.view, self.view.projects.currentText(), scope.owner, text, origin)
-        editor.destination.setCurrentIndex(self.view.memory.scope.currentIndex())
+        source_text = ""
+        if evidence is not None:
+            citation, locator = evidence
+            source_text = citation_text(citation.relative_path, citation.source, locator)
+        editor = FactEditor(self.view, self.view.projects.currentText(), scope.owner, text, origin,
+                            source_text=source_text)
+        if evidence is None:
+            editor.destination.setCurrentIndex(self.view.memory.scope.currentIndex())
         if previous is not None:
             editor.setWindowTitle(f"Correct fact · version {previous.version}")
             editor.destination.setCurrentIndex(0 if previous.project is not None else 1)
@@ -675,7 +690,8 @@ class Desktop:
             destination = Destination(editor.destination.currentData())
             value = editor.statement.toPlainText()
             draft = (FactDraft(scope, value, destination, origin, id=UUID(previous.id))
-                     if previous else FactDraft(scope, value, destination, origin))
+                     if previous else FactDraft(scope, value, destination, origin,
+                                                locator=evidence[1].id if evidence else None))
 
             async def persist() -> None:
                 if self.core.selection == scope:

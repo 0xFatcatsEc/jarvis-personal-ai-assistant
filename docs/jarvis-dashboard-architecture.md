@@ -118,6 +118,10 @@ Use proposed shortcuts **Ctrl+1–5** for those destinations and **Ctrl+6** for 
 
 Open **Evidence** with **Ctrl+2**. Choose **Approve source file** or **Save source excerpts** through the existing source controls. Type search terms and press Enter to search the current published revisions. To search one historical published revision, paste its full 32-character ID in **Revision**. The inspector provides a selectable revision ID for future use.
 
+Use **Answer from evidence** for a question. The view quotes the best matching sentence from each retained passage and shows the file, full revision ID and page or text range. Conflicting passages appear separately. Choose a citation and press Enter for its exact locator and full excerpt. An empty result reports insufficient evidence. This workflow runs locally even when the model is unavailable.
+
+Select a citation and activate **Remember this** to open a project-memory review. The dialog shows the retained excerpt and its exact citation alongside a blank fact field. Write the fact and choose **Confirm and save**. Use **Memory** to reopen the original citation, even after a source replacement.
+
 Select a result with the arrow keys and press Enter or choose **Inspect selected citation**. Each result shows its passage number, project-relative path, page or text range, and a short revision ID. The inspector resolves the exact locator and shows selectable full IDs and retained text. Separate conflicting passages remain separately inspectable, and multiple citations for one deduplicated passage share its number. Empty searches report insufficient evidence. Image-only PDF pages need text extraction before they can produce matches. This browser uses the local store without Ollama.
 
 The repository checks the live grant for search and lookup. Changing project, conversation or query clears the affected view and discards late results. The Windows acceptance scenario covers a keyboard-opened PDF locator, a historical text locator, a late result from a prior project and a grant revoked before inspection. [Desktop acceptance](../tests/test_desktop.py)

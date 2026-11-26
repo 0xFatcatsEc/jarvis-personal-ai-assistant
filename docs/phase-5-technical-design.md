@@ -38,3 +38,13 @@ On reopen, a requested operation or unfinished read becomes `interrupted`. A lau
 ## 5.1.2.2 · Untrusted evidence
 
 The acceptance fixture sends an approved retained excerpt containing requests for an upload and an out-of-root read through the real scoped broker, coordinator and Ollama request parser. The Ollama HTTP fixture is local and returns a tool-shaped message alongside its text. Assertions verify that no tool definitions were exposed to the model, no extra operation was journaled, the launch adapter was never called, and no foreign file content was included. The test also checks that fixture text and prompt text do not reach the journal or diagnostics. [Boundary fixture](../tests/test_tool_journal.py)
+
+## 5.3.1.1 · Offline study qualification
+
+The walkthrough matrix maps the current checkout to PRD A1–A5 and tracks candidate evidence separately from subsystem and Foundation evidence. [Windows study walkthrough](windows-study-walkthrough.md)
+
+### A3 · Capture from an Evidence citation
+
+**Remember this** resolves the selected source, revision and locator through the existing read broker. The controller checks the active selection before opening the review. The dialog displays the retained citation, locks the destination to the current project and requires the owner to write and confirm the fact. The confirmed draft carries the resolved locator ID. The existing memory transaction revalidates the grant and verifies the locator belongs to that project. No schema migration is required.
+
+A linked fact keeps its original locator across source replacement. The existing correction flow creates a new owner-statement version, with the attachment retained on version 1. Forgetting suppresses all fact versions through the existing deletion ledger and leaves published source evidence independently addressable. [Windows lifecycle acceptance](../tests/test_desktop.py)

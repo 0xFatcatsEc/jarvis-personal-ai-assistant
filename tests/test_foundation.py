@@ -215,6 +215,10 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
                 return httpx.Response(200, json={"cloud": {"disabled": True}})
             if req.url.path == "/api/tags":
                 return httpx.Response(200, json={"models":[{"name":self.manifest.model,"digest":digest}]})
+            request = json.loads(req.content)
+            self.assertIs(request["think"], True)
+            self.assertEqual(request["options"]["temperature"], 0)
+            self.assertEqual(request["options"]["num_predict"], self.settings.output)
             return httpx.Response(200, content=body)
         adapter = Ollama(self.settings, self.manifest, transport=httpx.MockTransport(reply))
         self.enterContext(patch("stylus_jarvis.inference.ollama.verify_listener"))
@@ -231,6 +235,23 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
                 _ = [p async for p in adapter.generate([])]
         finally:
             await adapter.close()
+
+    async def test_ollama_drains_http_body_after_terminal_frame(self) -> None:
+        drained = asyncio.Event()
+
+        class Body(httpx.AsyncByteStream):
+            async def __aiter__(self) -> AsyncIterator[bytes]:
+                yield b'{"done":false,"message":{"content":"","thinking":"private"}}\n'
+                yield b'{"done":true,"done_reason":"stop","message":{"content":"OK"}}\n'
+                await asyncio.sleep(0)
+                drained.set()
+
+        adapter = Ollama(self.settings, self.manifest,
+                         transport=httpx.MockTransport(lambda _: httpx.Response(200, stream=Body())))
+        self.addAsyncCleanup(adapter.close)
+        with patch.object(adapter, "probe", autospec=True):
+            self.assertEqual([part async for part in adapter.generate([])], ["OK"])
+        self.assertTrue(drained.is_set())
 
     async def test_redirect_does_not_leave_loopback(self) -> None:
         self.enterContext(patch("stylus_jarvis.inference.ollama.verify_listener"))

@@ -2,6 +2,7 @@
 import asyncio
 import json
 from collections.abc import AsyncGenerator
+from contextlib import AsyncExitStack, aclosing
 from dataclasses import asdict
 from typing import Any
 
@@ -61,19 +62,30 @@ class Ollama:
         # Check the effective native boundary and current service before any prompt
         # leaves this process, including calls made directly to the adapter.
         await self.probe()
+        # The pinned Qwen template always opens a thinking block. With think=False
+        # Ollama returns that block as content. Request separate thinking frames and
+        # consume only the answer field.
         payload = {"model": self.manifest.model, "messages": [asdict(m) for m in messages],
-                   "think": False, "stream": True,
-                   "options": {"num_ctx": self.settings.context, "num_predict": self.settings.output}}
+                   "think": True, "stream": True,
+                   "options": {"num_ctx": self.settings.context, "num_predict": self.settings.output,
+                               "temperature": 0, "seed": 41}}
         try:
-            async with asyncio.timeout(300), self._client.stream("POST", "/api/chat", json=payload, timeout=60) as response:
+            async with asyncio.timeout(300), AsyncExitStack() as stack:
+                response = await stack.enter_async_context(
+                    self._client.stream("POST", "/api/chat", json=payload, timeout=60))
                 response.raise_for_status()
                 buffer = bytearray()
                 total = 0
-                chunks = aiter(response.aiter_bytes())
+                chunks = await stack.enter_async_context(aclosing(response.aiter_bytes()))
                 deadline = 60
+                terminal_deadline: float | None = None
+                truncated = False
                 while True:
                     try:
-                        async with asyncio.timeout(deadline):
+                        async with asyncio.timeout_at(
+                            terminal_deadline if terminal_deadline is not None else
+                            asyncio.get_running_loop().time() + deadline
+                        ):
                             chunk = await anext(chunks)
                     except StopAsyncIteration:
                         # A final NDJSON record may omit its trailing newline.
@@ -90,6 +102,8 @@ class Ollama:
                         del buffer[:end+1]
                         if not line.strip():
                             continue
+                        if terminal_deadline is not None:
+                            raise Failure(Code.STREAM)
                         if len(line) > 1024*1024:
                             raise Failure(Code.STREAM)
                         frame = json.loads(line)
@@ -105,13 +119,17 @@ class Ollama:
                             count = frame.get("eval_count")
                             if reason == "length" or (reason in (None, "") and
                                     type(count) is int and count >= self.settings.output):
-                                raise Failure(Code.TOKEN_LIMIT)
-                            if reason not in (None, "", "stop"):
+                                truncated = True
+                            elif reason not in (None, "", "stop"):
                                 raise Failure(Code.STREAM)
-                            return
+                            # Let HTTPX consume the response boundary before releasing the stream.
+                            terminal_deadline = asyncio.get_running_loop().time() + 2
                     if len(buffer) > 1024*1024:
                         raise Failure(Code.STREAM)
-                raise Failure(Code.STREAM)
+                if terminal_deadline is None:
+                    raise Failure(Code.STREAM)
+                if truncated:
+                    raise Failure(Code.TOKEN_LIMIT)
         except (httpx.HTTPError, TimeoutError) as exc:
             raise Failure(Code.MODEL) from exc
         except (ValueError, KeyError, TypeError) as exc:

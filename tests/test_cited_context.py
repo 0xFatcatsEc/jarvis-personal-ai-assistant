@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from stylus_jarvis.contracts.messages import Code, Failure
+from stylus_jarvis.knowledge.answers import extract_answer
 from stylus_jarvis.storage.database import Database
 from stylus_jarvis.storage.repositories import Repositories
 
@@ -73,6 +74,9 @@ class CitedContextTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(conflict.passages), 2)
         self.assertTrue(any("CSV" in p.text for p in conflict.passages))
         self.assertTrue(any("JSON" in p.text for p in conflict.passages))
+        quotes = extract_answer("nightly export", conflict).passages
+        self.assertEqual({p.text for p in quotes}, {"The nightly export is CSV.", "The nightly export is JSON."})
+        self.assertEqual([p.citations for p in quotes], [p.citations for p in conflict.passages])
         bounded = await self.store.cited_context(scope, "nightly export", max_passages=1)
         self.assertEqual(bounded.passages, conflict.passages[:1])
         exact_bytes = len(conflict.payload().encode("utf-8"))
